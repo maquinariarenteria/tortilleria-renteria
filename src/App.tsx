@@ -77,7 +77,7 @@ export function App() {
   const totalCartCount = cart.reduce((acc, i) => acc + i.quantity, 0);
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans selection:bg-[#2563eb] selection:text-white">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans selection:bg-[#2563eb] selection:text-white overflow-x-hidden w-full relative">
       
       {/* 1. Header with Cart Badge */}
       <Navbar

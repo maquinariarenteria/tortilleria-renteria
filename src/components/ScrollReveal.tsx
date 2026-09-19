@@ -45,20 +45,20 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
     };
   }, []);
 
-  // Compute transform based on direction
+  // Compute transform based on direction (safe distances to avoid mobile viewport stretching)
   const getTransform = () => {
     if (isVisible) return 'translate3d(0, 0, 0)';
     switch (direction) {
       case 'left':
-        return 'translate3d(-60px, 0, 0)';
+        return 'translate3d(-20px, 0, 0)';
       case 'right':
-        return 'translate3d(60px, 0, 0)';
+        return 'translate3d(20px, 0, 0)';
       case 'up':
-        return 'translate3d(0, 50px, 0)';
+        return 'translate3d(0, 24px, 0)';
       case 'down':
-        return 'translate3d(0, -50px, 0)';
+        return 'translate3d(0, -24px, 0)';
       default:
-        return 'translate3d(-60px, 0, 0)';
+        return 'translate3d(-20px, 0, 0)';
     }
   };
 

@@ -19,11 +19,11 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         {/* Brand: MAQUINARIA RENTERIA */}
-        <a href="#" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 bg-[#2563eb] rounded flex items-center justify-center font-black text-white text-sm transition-transform group-hover:scale-105">
+        <a href="#" className="flex items-center gap-1.5 sm:gap-2 group shrink-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#2563eb] rounded flex items-center justify-center font-black text-white text-xs sm:text-sm transition-transform group-hover:scale-105">
             MR
           </div>
-          <span className="font-extrabold text-base sm:text-lg tracking-wider text-slate-900 uppercase">
+          <span className="font-extrabold text-xs sm:text-base md:text-lg tracking-wider text-slate-900 uppercase">
             MAQUINARIA <span className="text-[#2563eb]">RENTERIA</span>
           </span>
         </a>
@@ -36,23 +36,23 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         {/* Actions: Currency & Cart */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={onToggleCurrency}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded transition"
+            className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2 sm:px-3 py-1.5 rounded transition"
           >
-            <Globe size={13} className="text-[#2563eb]" />
-            <span>{currency === 'USD' ? '$ USD' : '$ MXN'}</span>
+            <Globe size={12} className="text-[#2563eb]" />
+            <span>{currency === 'USD' ? 'USD' : 'MXN'}</span>
           </button>
 
           <button
             onClick={onOpenCart}
-            className="relative flex items-center gap-2 bg-[#0f172a] hover:bg-black text-white px-4 py-2 rounded text-xs font-bold uppercase transition active:scale-95 shadow-sm"
+            className="relative flex items-center gap-1.5 bg-[#0f172a] hover:bg-black text-white px-2.5 sm:px-4 py-1.5 sm:py-2 rounded text-[11px] sm:text-xs font-bold uppercase transition active:scale-95 shadow-sm"
           >
-            <ShoppingCart size={15} className="text-[#2563eb]" />
-            <span>Carrito</span>
+            <ShoppingCart size={14} className="text-[#2563eb]" />
+            <span className="hidden xs:inline">Carrito</span>
             {cartCount > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 bg-[#2563eb] text-white text-[10px] font-black rounded-full animate-bounce">
+              <span className="px-1.5 py-0.2 bg-[#2563eb] text-white text-[10px] font-black rounded-full animate-bounce">
                 {cartCount}
               </span>
             )}
