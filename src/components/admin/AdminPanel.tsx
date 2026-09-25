@@ -160,8 +160,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 sm:p-8 space-y-6">
           <div className="text-center space-y-2">
-            <div className="w-12 h-12 bg-[#2563eb] text-white rounded-xl mx-auto flex items-center justify-center font-black text-xl shadow-md">
-              MR
+            <div className="w-16 h-16 bg-white rounded-2xl mx-auto flex items-center justify-center p-1.5 shadow-md border border-slate-200">
+              <img
+                src="/images/logo.png"
+                alt="Maquinaria Renteria Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight">
               Panel de Administración
@@ -234,8 +238,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#2563eb] text-white flex items-center justify-center font-black text-sm">
-              MR
+            <div className="w-8 h-8 rounded-lg bg-white p-1 flex items-center justify-center shrink-0 shadow-xs">
+              <img
+                src="/images/logo.png"
+                alt="Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <span className="font-extrabold text-sm sm:text-base tracking-wider uppercase block">

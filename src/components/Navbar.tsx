@@ -19,13 +19,20 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         {/* Brand: MAQUINARIA RENTERIA */}
-        <a href="#" className="flex items-center gap-1.5 sm:gap-2 group shrink-0">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#2563eb] rounded flex items-center justify-center font-black text-white text-xs sm:text-sm transition-transform group-hover:scale-105">
-            MR
+        <a href="#" className="flex items-center gap-2.5 group shrink-0">
+          <img
+            src="/images/logo.png"
+            alt="Maquinaria Renteria Logo"
+            className="h-10 sm:h-12 w-auto object-contain transition-transform group-hover:scale-105"
+          />
+          <div className="flex flex-col">
+            <span className="font-extrabold text-xs sm:text-base md:text-lg tracking-wider text-slate-900 uppercase leading-tight">
+              MAQUINARIA <span className="text-[#2563eb]">RENTERIA</span>
+            </span>
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden xs:block">
+              El motor de tu tortillería
+            </span>
           </div>
-          <span className="font-extrabold text-xs sm:text-base md:text-lg tracking-wider text-slate-900 uppercase">
-            MAQUINARIA <span className="text-[#2563eb]">RENTERIA</span>
-          </span>
         </a>
 
         {/* Minimal Navigation */}
