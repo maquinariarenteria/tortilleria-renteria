@@ -39,7 +39,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog, onContact }) => {
                 📦 Sobre pedido
               </span>
               <span className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded border border-slate-200">
-                🏷️ + Gastos de envío
+                🏷️ + Envío (+16% IVA con factura)
               </span>
             </div>
 

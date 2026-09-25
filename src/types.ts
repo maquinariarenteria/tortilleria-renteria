@@ -6,7 +6,17 @@ export type MachineCategory =
   | 'comales-rotativos'
   | 'enfriadores';
 
-export type EnergyType = 'Gas LP' | 'Gas Natural' | 'Eléctrica 220V' | 'Trifásica 440V' | 'Dual (Gas + Eléctrica)';
+export type EnergyType = 
+  | 'Gas LP' 
+  | 'Gas LP (Manual)'
+  | 'Gas Natural' 
+  | 'Eléctrica 110V'
+  | 'Eléctrica 220V' 
+  | 'Eléctrica 110V / 220V'
+  | 'Trifásica 440V' 
+  | 'Dual (Gas LP + Eléctrica 110V)'
+  | 'Dual (Gas + Eléctrica)'
+  | 'Manual (Sin electricidad)';
 
 export type Model3DType = 'press' | 'line' | 'oven' | 'mixer' | 'rotary' | 'cooler';
 

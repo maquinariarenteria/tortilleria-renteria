@@ -142,7 +142,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </span>
             </div>
             <div className="text-[11px] text-slate-500 font-medium text-right">
-              * Más gastos de envío • Envíos a toda la República Mexicana
+              * Más gastos de envío • +16% IVA si requiere factura • Envíos a toda la República
             </div>
           </div>
 

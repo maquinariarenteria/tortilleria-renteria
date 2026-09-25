@@ -72,7 +72,7 @@ export const Catalog: React.FC<CatalogProps> = ({
           <div className="hidden md:block text-slate-300">•</div>
           <div className="flex items-center gap-2 text-slate-900">
             <span className="text-base">🏷️</span>
-            <span>Precios más gastos de envío</span>
+            <span>Precios más envío (+16% IVA en caso de factura)</span>
           </div>
         </div>
 
@@ -428,7 +428,7 @@ function ProductSectionRow({
 
                   <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500 font-medium">
                     <span>Sobre pedido</span>
-                    <span>+ Gastos de envío</span>
+                    <span>+ Envío e IVA</span>
                   </div>
                 </div>
               </div>
@@ -529,7 +529,7 @@ function CollageItem({
 
           <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 font-medium">
             <span className="text-slate-600">Sobre pedido</span>
-            <span className="text-slate-400">+ Gastos de envío</span>
+            <span className="text-slate-400">+ Envío e IVA</span>
           </div>
         </div>
       </div>
