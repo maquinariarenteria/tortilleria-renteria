@@ -4,7 +4,7 @@ import {
   updateStoredMachine, addStoredMachine, deleteStoredMachine, 
   getStoredOrders, updateStoredOrderStatus, deleteStoredOrder, 
   getStoredInquiries, updateStoredInquiryStatus, getSiteAnalytics, 
-  isAdminAuthenticated, setAdminAuthenticated, resetAdminDataToDefaults,
+  resetSiteAnalytics, isAdminAuthenticated, setAdminAuthenticated, resetAdminDataToDefaults,
   SiteConfig, AdminOrder, ContactInquiry, SiteAnalytics
 } from '../../utils/adminStore';
 import { MachineProduct, MachineCategory, EnergyType } from '../../types';
@@ -12,7 +12,7 @@ import { formatCurrency } from '../../utils/formatters';
 import { 
   LayoutDashboard, ShoppingBag, Wrench, Globe, LogOut, ArrowLeft, 
   TrendingUp, Users, DollarSign, Package, CheckCircle2, Clock, 
-  Truck, Eye, Edit3, Trash2, Plus, Upload, Save, RotateCcw, 
+  Truck, Eye, EyeOff, Edit3, Trash2, Plus, Upload, Save, RotateCcw, 
   ExternalLink, Phone, Mail, MapPin, KeyRound, Lock, Search, AlertCircle, X
 } from 'lucide-react';
 
@@ -24,6 +24,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(isAdminAuthenticated());
   const [passwordInput, setPasswordInput] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string>('');
 
   // Active tab
@@ -49,6 +50,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
 
   const SUGGESTED_PASSWORD = 'renteria2026';
 
+  // Prevent background scrolling whenever a modal is open
+  useEffect(() => {
+    if (editingMachine || selectedOrder) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [editingMachine, selectedOrder]);
+
   useEffect(() => {
     const handleDataUpdates = () => {
       setConfig(getSiteConfig());
@@ -62,12 +74,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
     window.addEventListener('mr_machines_updated', handleDataUpdates);
     window.addEventListener('mr_orders_updated', handleDataUpdates);
     window.addEventListener('mr_inquiries_updated', handleDataUpdates);
+    window.addEventListener('mr_analytics_updated', handleDataUpdates);
 
     return () => {
       window.removeEventListener('mr_config_updated', handleDataUpdates);
       window.removeEventListener('mr_machines_updated', handleDataUpdates);
       window.removeEventListener('mr_orders_updated', handleDataUpdates);
       window.removeEventListener('mr_inquiries_updated', handleDataUpdates);
+      window.removeEventListener('mr_analytics_updated', handleDataUpdates);
     };
   }, []);
 
@@ -78,7 +92,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
       setIsAuthenticated(true);
       setAuthError('');
     } else {
-      setAuthError('Contraseña incorrecta. Utiliza la contraseña sugerida.');
+      setAuthError('Contraseña incorrecta. Verifica e intenta de nuevo.');
     }
   };
 
@@ -157,62 +171,44 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
             </p>
           </div>
 
-          {/* Suggested password banner requested by user */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 flex items-start gap-3">
-            <KeyRound size={20} className="text-[#2563eb] shrink-0 mt-0.5" />
-            <div className="text-xs text-slate-700">
-              <span className="font-bold block text-blue-900 uppercase text-[11px]">
-                Contraseña sugerida de acceso:
-              </span>
-              <code className="inline-block mt-1 font-mono font-black text-sm bg-blue-100 text-blue-900 px-2.5 py-0.5 rounded border border-blue-300">
-                {SUGGESTED_PASSWORD}
-              </code>
-              <p className="text-[10px] text-slate-500 mt-1">
-                Haz clic en el botón de abajo o escribe esta contraseña para ingresar.
-              </p>
-            </div>
-          </div>
-
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                Contraseña:
+                Contraseña de Acceso:
               </label>
               <div className="relative">
-                <Lock size={16} className="absolute left-3 top-3 text-slate-400" />
+                <Lock size={16} className="absolute left-3 top-3.5 text-slate-400" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
-                  placeholder="Ingresa la contraseña"
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-[#2563eb]"
+                  placeholder="••••••••••••"
+                  className="w-full pl-9 pr-10 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:border-[#2563eb]"
                   autoFocus
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-700"
+                  aria-label="Mostrar u ocultar contraseña"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
             {authError && (
-              <p className="text-xs text-red-600 font-semibold bg-red-50 p-2 rounded-lg border border-red-200">
+              <p className="text-xs text-red-600 font-semibold bg-red-50 p-2.5 rounded-lg border border-red-200">
                 {authError}
               </p>
             )}
 
-            <div className="space-y-2">
-              <button
-                type="submit"
-                className="w-full btn-flat-primary py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md active:scale-98"
-              >
-                Ingresar al Administrador
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPasswordInput(SUGGESTED_PASSWORD)}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-xl text-xs font-bold uppercase transition"
-              >
-                Rellenar con contraseña sugerida
-              </button>
-            </div>
+            <button
+              type="submit"
+              className="w-full btn-flat-primary py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md active:scale-98"
+            >
+              Ingresar al Administrador
+            </button>
           </form>
 
           <div className="text-center pt-2 border-t border-slate-100">
@@ -400,42 +396,69 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
 
             {/* Visit Breakdown Chart Visual */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h3 className="font-black text-sm uppercase text-slate-900 tracking-wide">
-                    Registro Reciente de Visitas a la Web
+                  <h3 className="font-black text-sm uppercase text-slate-900 tracking-wide flex items-center gap-2">
+                    <TrendingUp size={16} className="text-[#2563eb]" />
+                    <span>Registro Real de Visitas a la Web</span>
                   </h3>
                   <span className="text-xs text-slate-500">
-                    Historial de tráfico detectado en la página
+                    Historial de tráfico real detectado en la página
                   </span>
                 </div>
-                <span className="text-xs font-bold bg-blue-50 text-[#2563eb] px-2.5 py-1 rounded-lg">
-                  Actualizado en vivo
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold bg-blue-50 text-[#2563eb] px-2.5 py-1 rounded-lg">
+                    En vivo
+                  </span>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('¿Deseas reiniciar los contadores de visitas a cero?')) {
+                        resetSiteAnalytics();
+                        setAnalytics(getSiteAnalytics());
+                        triggerSaveMessage('Métricas reiniciadas a cero.');
+                      }
+                    }}
+                    className="text-xs text-slate-400 hover:text-slate-700 hover:underline px-2 py-1"
+                  >
+                    Reiniciar
+                  </button>
+                </div>
               </div>
 
               {/* Bar chart representation */}
               <div className="space-y-2 pt-2">
-                {analytics.visitsHistory.map((item, idx) => {
-                  const maxCount = Math.max(...analytics.visitsHistory.map(h => h.count), 1);
-                  const percentage = Math.round((item.count / maxCount) * 100);
-                  return (
-                    <div key={idx} className="flex items-center gap-3 text-xs">
-                      <span className="font-mono text-slate-500 w-24 shrink-0 text-[11px]">
-                        {item.date}
-                      </span>
-                      <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden">
-                        <div
-                          className="bg-[#2563eb] h-full rounded-full transition-all duration-500"
-                          style={{ width: `${Math.max(percentage, 8)}%` }}
-                        />
+                {(!analytics.visitsHistory || analytics.visitsHistory.length === 0) ? (
+                  <div className="py-8 text-center text-slate-400 space-y-1 bg-slate-50 rounded-xl border border-slate-100">
+                    <Eye size={28} className="mx-auto text-slate-300 mb-1" />
+                    <p className="text-xs font-bold uppercase text-slate-600">
+                      Métricas 100% Reales
+                    </p>
+                    <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                      Las visitas se contabilizan en tiempo real conforme los clientes naveguen por la web.
+                    </p>
+                  </div>
+                ) : (
+                  analytics.visitsHistory.map((item, idx) => {
+                    const maxCount = Math.max(...analytics.visitsHistory.map(h => h.count), 1);
+                    const percentage = Math.round((item.count / maxCount) * 100);
+                    return (
+                      <div key={idx} className="flex items-center gap-3 text-xs">
+                        <span className="font-mono text-slate-500 w-24 shrink-0 text-[11px]">
+                          {item.date}
+                        </span>
+                        <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden">
+                          <div
+                            className="bg-[#2563eb] h-full rounded-full transition-all duration-500"
+                            style={{ width: `${Math.max(percentage, 8)}%` }}
+                          />
+                        </div>
+                        <span className="font-mono font-bold text-slate-800 w-10 text-right">
+                          {item.count}
+                        </span>
                       </div>
-                      <span className="font-mono font-bold text-slate-800 w-10 text-right">
-                        {item.count}
-                      </span>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </div>
 
@@ -736,22 +759,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
 
             {/* PRODUCT EDIT MODAL */}
             {editingMachine && (
-              <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto p-6 space-y-4 shadow-2xl border border-slate-200 animate-scaleUp">
+              <div 
+                onClick={() => setEditingMachine(null)}
+                className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-hidden"
+              >
+                <div 
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-scaleUp my-auto"
+                >
                   
-                  <div className="flex items-center justify-between border-b pb-3">
-                    <h3 className="font-black text-base uppercase text-slate-900">
+                  {/* Fixed Header */}
+                  <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50">
+                    <h3 className="font-black text-base uppercase text-slate-900 truncate pr-2">
                       {isCreatingNewMachine ? 'Agregar Nueva Máquina' : `Editar: ${editingMachine.name}`}
                     </h3>
                     <button
                       onClick={() => setEditingMachine(null)}
-                      className="p-1 rounded-full text-slate-400 hover:text-slate-800"
+                      className="p-1 rounded-full text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition shrink-0"
                     >
                       <X size={20} />
                     </button>
                   </div>
 
-                  <form onSubmit={handleSaveMachine} className="space-y-4 text-xs">
+                  <form onSubmit={handleSaveMachine} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-5 sm:p-6 space-y-4 text-xs overscroll-contain">
                     
                     {/* PHOTO UPLOADER BOX */}
                     <div className="p-4 bg-blue-50/60 rounded-xl border border-blue-200 space-y-3">
@@ -918,10 +949,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
                       />
                     </div>
 
-                    <div className="flex gap-2 pt-2 border-t">
+                    </div>
+
+                    {/* Fixed Footer Buttons */}
+                    <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex gap-2 shrink-0">
                       <button
                         type="submit"
-                        className="flex-1 btn-flat-primary py-2.5 rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-1.5 shadow-sm"
+                        className="flex-1 btn-flat-primary py-2.5 rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-1.5 shadow-sm active:scale-98"
                       >
                         <Save size={15} />
                         <span>Guardar Cambios de Máquina</span>
@@ -930,7 +964,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
                       <button
                         type="button"
                         onClick={() => setEditingMachine(null)}
-                        className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold uppercase"
+                        className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold uppercase transition"
                       >
                         Cancelar
                       </button>
@@ -1121,8 +1155,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
       {/* ORDER DETAILS MODAL                                                       */}
       {/* ========================================================================= */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl border border-slate-200">
+        <div 
+          onClick={() => setSelectedOrder(null)}
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-hidden"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl border border-slate-200 animate-scaleUp my-auto"
+          >
             <div className="flex items-center justify-between border-b pb-3">
               <div>
                 <h3 className="font-black text-base uppercase text-slate-900">

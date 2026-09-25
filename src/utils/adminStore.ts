@@ -78,7 +78,7 @@ const STORAGE_KEYS = {
   MACHINES: 'mr_machines_catalog_v1',
   ORDERS: 'mr_orders_v1',
   INQUIRIES: 'mr_inquiries_v1',
-  ANALYTICS: 'mr_analytics_v1',
+  ANALYTICS: 'mr_real_analytics_v1',
   AUTH: 'mr_admin_auth_v1',
 };
 
@@ -215,31 +215,28 @@ export function updateStoredInquiryStatus(id: string, status: ContactInquiry['st
   return updated;
 }
 
-// Analytics (Visitas)
+// Analytics (Visitas 100% Reales)
+const EMPTY_ANALYTICS: SiteAnalytics = {
+  totalVisits: 0,
+  uniqueVisits: 0,
+  pageViews: 0,
+  lastVisit: '',
+  visitsHistory: [],
+};
+
 export function getSiteAnalytics(): SiteAnalytics {
-  const today = new Date().toISOString().split('T')[0];
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.ANALYTICS);
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (typeof parsed.totalVisits === 'number') {
+        return parsed;
+      }
     }
   } catch (e) {
     console.error('Error loading analytics:', e);
   }
-  return {
-    totalVisits: 148,
-    uniqueVisits: 112,
-    pageViews: 420,
-    lastVisit: new Date().toISOString(),
-    visitsHistory: [
-      { date: '2026-09-20', count: 18 },
-      { date: '2026-09-21', count: 24 },
-      { date: '2026-09-22', count: 31 },
-      { date: '2026-09-23', count: 28 },
-      { date: '2026-09-24', count: 35 },
-      { date: today, count: 12 },
-    ],
-  };
+  return { ...EMPTY_ANALYTICS };
 }
 
 export function recordSiteVisit(): void {
@@ -249,12 +246,16 @@ export function recordSiteVisit(): void {
   const hasVisitedSession = sessionStorage.getItem('mr_session_visited');
   if (!hasVisitedSession) {
     sessionStorage.setItem('mr_session_visited', 'true');
-    analytics.uniqueVisits += 1;
+    analytics.uniqueVisits = (analytics.uniqueVisits || 0) + 1;
   }
 
-  analytics.totalVisits += 1;
-  analytics.pageViews += 1;
+  analytics.totalVisits = (analytics.totalVisits || 0) + 1;
+  analytics.pageViews = (analytics.pageViews || 0) + 1;
   analytics.lastVisit = new Date().toISOString();
+
+  if (!Array.isArray(analytics.visitsHistory)) {
+    analytics.visitsHistory = [];
+  }
 
   const historyIndex = analytics.visitsHistory.findIndex((h) => h.date === today);
   if (historyIndex >= 0) {
@@ -267,6 +268,12 @@ export function recordSiteVisit(): void {
   }
 
   localStorage.setItem(STORAGE_KEYS.ANALYTICS, JSON.stringify(analytics));
+  window.dispatchEvent(new Event('mr_analytics_updated'));
+}
+
+export function resetSiteAnalytics(): void {
+  localStorage.setItem(STORAGE_KEYS.ANALYTICS, JSON.stringify(EMPTY_ANALYTICS));
+  window.dispatchEvent(new Event('mr_analytics_updated'));
 }
 
 // Admin Auth Session
