@@ -21,7 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Brand: MAQUINARIA RENTERIA */}
         <a href="#" className="flex items-center gap-2.5 group shrink-0">
           <img
-            src="/images/logo.png"
+            src="/images/logo_transparent.png"
             alt="Maquinaria Renteria Logo"
             className="h-10 sm:h-12 w-auto object-contain transition-transform group-hover:scale-105"
           />

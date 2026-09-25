@@ -162,7 +162,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
           <div className="text-center space-y-2">
             <div className="w-16 h-16 bg-white rounded-2xl mx-auto flex items-center justify-center p-1.5 shadow-md border border-slate-200">
               <img
-                src="/images/logo.png"
+                src="/images/logo_transparent.png"
                 alt="Maquinaria Renteria Logo"
                 className="w-full h-full object-contain"
               />
@@ -240,7 +240,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-white p-1 flex items-center justify-center shrink-0 shadow-xs">
               <img
-                src="/images/logo.png"
+                src="/images/logo_transparent.png"
                 alt="Logo"
                 className="w-full h-full object-contain"
               />

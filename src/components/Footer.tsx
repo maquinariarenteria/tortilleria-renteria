@@ -16,7 +16,7 @@ export const Footer: React.FC = () => {
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-white rounded-xl p-1 flex items-center justify-center shrink-0 shadow-sm border border-slate-700">
                 <img
-                  src="/images/logo.png"
+                  src="/images/logo_transparent.png"
                   alt="Maquinaria Renteria Logo"
                   className="w-full h-full object-contain"
                 />

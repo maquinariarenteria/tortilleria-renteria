@@ -59,7 +59,7 @@
         align-items: center;
         justify-content: center;
         z-index: 999999;
-        transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+        transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         pointer-events: all;
       }
       #mr-splash.mr-splash-done {
@@ -72,19 +72,20 @@
         flex-direction: column;
         align-items: center;
         text-align: center;
-        padding: 20px;
-        animation: mrLogoPop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        padding: 24px;
+        animation: mrLogoPop 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
       .mr-splash-logo {
-        width: 120px;
-        height: 120px;
+        width: 175px;
+        max-width: 70vw;
+        height: auto;
         object-fit: contain;
-        margin-bottom: 16px;
-        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.06));
+        margin-bottom: 20px;
+        filter: drop-shadow(0 12px 24px rgba(37, 99, 235, 0.12));
       }
       .mr-splash-title {
         font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-        font-size: 21px;
+        font-size: 22px;
         font-weight: 900;
         letter-spacing: 0.06em;
         text-transform: uppercase;
@@ -99,48 +100,24 @@
         font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
         font-size: 11px;
         font-weight: 700;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.14em;
         text-transform: uppercase;
         color: #64748b;
         margin-top: 6px;
       }
-      .mr-splash-bar {
-        width: 130px;
-        height: 3.5px;
-        background-color: #e2e8f0;
-        border-radius: 999px;
-        margin-top: 22px;
-        overflow: hidden;
-        position: relative;
-      }
-      .mr-splash-bar-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #2563eb, #38bdf8);
-        border-radius: 999px;
-        width: 0%;
-        animation: mrProgress 0.75s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-      }
       @keyframes mrLogoPop {
-        0% { opacity: 0; transform: scale(0.85); }
+        0% { opacity: 0; transform: scale(0.88); }
         100% { opacity: 1; transform: scale(1); }
-      }
-      @keyframes mrProgress {
-        0% { width: 0%; }
-        50% { width: 70%; }
-        100% { width: 100%; }
       }
     </style>
   </head>
   <body class="bg-[#f8fafc] text-slate-900 antialiased selection:bg-[#2563eb] selection:text-white">
-    <!-- Instant Splash Screen with Logo -->
+    <!-- Instant Splash Screen with Transparent Logo (No Loading Bar) -->
     <div id="mr-splash" aria-hidden="true">
       <div class="mr-splash-content">
-        <img src="/images/logo.png" alt="Maquinaria Renteria" class="mr-splash-logo" />
+        <img src="/images/logo_transparent.png" alt="Maquinaria Renteria" class="mr-splash-logo" />
         <h1 class="mr-splash-title">MAQUINARIA <span>RENTERIA</span></h1>
         <p class="mr-splash-slogan">El motor de tu tortillería</p>
-        <div class="mr-splash-bar">
-          <div class="mr-splash-bar-fill"></div>
-        </div>
       </div>
     </div>
 
@@ -158,15 +135,15 @@
               if (splash && splash.parentNode) {
                 splash.parentNode.removeChild(splash);
               }
-            }, 450);
-          }, 650);
+            }, 400);
+          }, 500);
         };
 
         if (document.readyState === 'complete') {
           window.mrDismissSplash();
         } else {
           window.addEventListener('load', window.mrDismissSplash);
-          setTimeout(window.mrDismissSplash, 1000);
+          setTimeout(window.mrDismissSplash, 800);
         }
       })();
     </script>
