@@ -1,17 +1,28 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send, MessageCircle, Clock, Truck, CreditCard, ShieldCheck } from 'lucide-react';
 import { ScrollReveal } from './ScrollReveal';
+import { sendContactInquiryEmail } from '../utils/emailService';
+import { getSiteConfig } from '../utils/adminStore';
 
 export const ContactSection: React.FC = () => {
+  const config = getSiteConfig();
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     message: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    await sendContactInquiryEmail({
+      name: formData.name,
+      phone: formData.phone,
+      message: formData.message,
+    });
+    setIsSubmitting(false);
     setSubmitted(true);
   };
 
@@ -64,7 +75,7 @@ export const ContactSection: React.FC = () => {
                     <Phone size={16} className="text-[#2563eb] shrink-0" />
                     <div>
                       <span className="text-[10px] text-slate-500 block uppercase font-bold">Teléfono 1:</span>
-                      <a href="tel:+526391141084" className="font-bold hover:text-[#2563eb]">639 114 1084</a>
+                      <a href={`tel:+52${config.phone1.replace(/\D/g, '')}`} className="font-bold hover:text-[#2563eb]">{config.phone1}</a>
                     </div>
                   </div>
 
@@ -72,7 +83,7 @@ export const ContactSection: React.FC = () => {
                     <Phone size={16} className="text-[#2563eb] shrink-0" />
                     <div>
                       <span className="text-[10px] text-slate-500 block uppercase font-bold">Teléfono 2:</span>
-                      <a href="tel:+526391119008" className="font-bold hover:text-[#2563eb]">639 111 9008</a>
+                      <a href={`tel:+52${config.phone2.replace(/\D/g, '')}`} className="font-bold hover:text-[#2563eb]">{config.phone2}</a>
                     </div>
                   </div>
 
@@ -80,7 +91,7 @@ export const ContactSection: React.FC = () => {
                     <Mail size={16} className="text-[#2563eb] shrink-0" />
                     <div>
                       <span className="text-[10px] text-slate-500 block uppercase font-bold">Correo Oficial:</span>
-                      <a href="mailto:maquinariarenteria17@gmail.com" className="font-bold hover:text-[#2563eb]">maquinariarenteria17@gmail.com</a>
+                      <a href={`mailto:${config.email}`} className="font-bold hover:text-[#2563eb]">{config.email}</a>
                     </div>
                   </div>
                 </div>

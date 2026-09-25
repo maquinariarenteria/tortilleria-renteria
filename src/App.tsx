@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { MACHINES_DATA } from './data/machines';
+import React, { useState, useEffect } from 'react';
 import { MachineProduct, CartItem } from './types';
+import { getStoredMachines, recordSiteVisit } from './utils/adminStore';
+import { AdminPanel } from './components/admin/AdminPanel';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { ValueProps } from './components/ValueProps';
@@ -17,10 +18,46 @@ import { QuoteCartDrawer } from './components/QuoteCartDrawer';
 import { FloatingActions } from './components/FloatingActions';
 
 export function App() {
+  const [isAdmin, setIsAdmin] = useState(() => 
+    typeof window !== 'undefined' && window.location.hash.toLowerCase().includes('#admin')
+  );
+  const [machines, setMachines] = useState<MachineProduct[]>(() => getStoredMachines());
   const [currency, setCurrency] = useState<'USD' | 'MXN'>('MXN');
   const [selectedMachine, setSelectedMachine] = useState<MachineProduct | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  useEffect(() => {
+    // Record site visit for admin metrics
+    recordSiteVisit();
+
+    const handleHash = () => {
+      setIsAdmin(window.location.hash.toLowerCase().includes('#admin'));
+    };
+
+    const handleMachinesUpdate = () => {
+      setMachines(getStoredMachines());
+    };
+
+    window.addEventListener('hashchange', handleHash);
+    window.addEventListener('mr_machines_updated', handleMachinesUpdate);
+
+    return () => {
+      window.removeEventListener('hashchange', handleHash);
+      window.removeEventListener('mr_machines_updated', handleMachinesUpdate);
+    };
+  }, []);
+
+  if (isAdmin) {
+    return (
+      <AdminPanel
+        onExit={() => {
+          window.location.hash = '';
+          setIsAdmin(false);
+        }}
+      />
+    );
+  }
 
   const handleAddToCart = (machine: MachineProduct) => {
     setCart((prev) => {
@@ -98,7 +135,7 @@ export function App() {
 
       {/* 4. Featured Machines (Enters with scroll animations) */}
       <FeaturedMachines
-        machines={MACHINES_DATA}
+        machines={machines}
         currency={currency}
         onSelectMachine={(m) => setSelectedMachine(m)}
         onAddToCart={handleAddToCart}
@@ -110,7 +147,7 @@ export function App() {
 
       {/* 6. Complete Catalog */}
       <Catalog
-        machines={MACHINES_DATA}
+        machines={machines}
         currency={currency}
         onSelectMachine={(m) => setSelectedMachine(m)}
         onAddToCart={handleAddToCart}

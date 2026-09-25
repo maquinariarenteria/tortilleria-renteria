@@ -1,7 +1,9 @@
 import React from 'react';
-import { Phone, Mail, MapPin, Clock, ShieldCheck } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, ShieldCheck, Lock } from 'lucide-react';
+import { getSiteConfig } from '../utils/adminStore';
 
 export const Footer: React.FC = () => {
+  const config = getSiteConfig();
   return (
     <footer className="bg-[#0f172a] text-white pt-12 pb-8 border-t-4 border-[#2563eb]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
@@ -21,7 +23,7 @@ export const Footer: React.FC = () => {
             </div>
 
             <p className="text-sm font-bold text-blue-400 italic">
-              "El motor de tu tortillería"
+              "{config.slogan}"
             </p>
 
             <p className="text-xs text-slate-300 leading-relaxed">
@@ -43,22 +45,22 @@ export const Footer: React.FC = () => {
             <div className="space-y-2.5 text-slate-300">
               <p className="flex items-center gap-2">
                 <Phone size={14} className="text-[#2563eb] shrink-0" />
-                <a href="tel:+526391141084" className="font-bold text-white hover:text-blue-400 transition">639 114 1084</a>
+                <a href={`tel:+52${config.phone1.replace(/\D/g, '')}`} className="font-bold text-white hover:text-blue-400 transition">{config.phone1}</a>
               </p>
 
               <p className="flex items-center gap-2">
                 <Phone size={14} className="text-[#2563eb] shrink-0" />
-                <a href="tel:+526391119008" className="font-bold text-white hover:text-blue-400 transition">639 111 9008</a>
+                <a href={`tel:+52${config.phone2.replace(/\D/g, '')}`} className="font-bold text-white hover:text-blue-400 transition">{config.phone2}</a>
               </p>
 
               <p className="flex items-center gap-2">
                 <Mail size={14} className="text-[#2563eb] shrink-0" />
-                <a href="mailto:maquinariarenteria17@gmail.com" className="hover:text-white transition">maquinariarenteria17@gmail.com</a>
+                <a href={`mailto:${config.email}`} className="hover:text-white transition">{config.email}</a>
               </p>
 
               <p className="flex items-start gap-2">
                 <MapPin size={14} className="text-[#2563eb] shrink-0 mt-0.5" />
-                <span>Delicias, Chihuahua, México</span>
+                <span>{config.address}</span>
               </p>
 
               <p className="flex items-start gap-2">
@@ -169,7 +171,14 @@ export const Footer: React.FC = () => {
             <span>•</span>
             <span>Acero AISI 304 Certificado</span>
             <span>•</span>
-            <span>Envíos Nacionales & USA</span>
+            <a 
+              href="#admin" 
+              className="text-slate-400 hover:text-white transition flex items-center gap-1 underline underline-offset-4 decoration-slate-600 hover:decoration-white"
+              title="Panel de Administración"
+            >
+              <Lock size={11} className="text-[#2563eb]" />
+              <span>Acceso Admin</span>
+            </a>
           </div>
         </div>
 
