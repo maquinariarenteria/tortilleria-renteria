@@ -43,8 +43,134 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- Splash Screen Styles for Ultra-Fast Initial Impression -->
+    <style>
+      #mr-splash {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        background-color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 999999;
+        transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+        pointer-events: all;
+      }
+      #mr-splash.mr-splash-done {
+        opacity: 0;
+        transform: scale(1.05);
+        pointer-events: none;
+      }
+      .mr-splash-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 20px;
+        animation: mrLogoPop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .mr-splash-logo {
+        width: 120px;
+        height: 120px;
+        object-fit: contain;
+        margin-bottom: 16px;
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.06));
+      }
+      .mr-splash-title {
+        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 21px;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #0f172a;
+        margin: 0;
+        line-height: 1.2;
+      }
+      .mr-splash-title span {
+        color: #2563eb;
+      }
+      .mr-splash-slogan {
+        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-top: 6px;
+      }
+      .mr-splash-bar {
+        width: 130px;
+        height: 3.5px;
+        background-color: #e2e8f0;
+        border-radius: 999px;
+        margin-top: 22px;
+        overflow: hidden;
+        position: relative;
+      }
+      .mr-splash-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #2563eb, #38bdf8);
+        border-radius: 999px;
+        width: 0%;
+        animation: mrProgress 0.75s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      }
+      @keyframes mrLogoPop {
+        0% { opacity: 0; transform: scale(0.85); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+      @keyframes mrProgress {
+        0% { width: 0%; }
+        50% { width: 70%; }
+        100% { width: 100%; }
+      }
+    </style>
   </head>
   <body class="bg-[#f8fafc] text-slate-900 antialiased selection:bg-[#2563eb] selection:text-white">
+    <!-- Instant Splash Screen with Logo -->
+    <div id="mr-splash" aria-hidden="true">
+      <div class="mr-splash-content">
+        <img src="/images/logo.png" alt="Maquinaria Renteria" class="mr-splash-logo" />
+        <h1 class="mr-splash-title">MAQUINARIA <span>RENTERIA</span></h1>
+        <p class="mr-splash-slogan">El motor de tu tortillería</p>
+        <div class="mr-splash-bar">
+          <div class="mr-splash-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function() {
+        var splash = document.getElementById('mr-splash');
+        if (!splash) return;
+        var dismissed = false;
+        window.mrDismissSplash = function() {
+          if (dismissed) return;
+          dismissed = true;
+          setTimeout(function() {
+            splash.classList.add('mr-splash-done');
+            setTimeout(function() {
+              if (splash && splash.parentNode) {
+                splash.parentNode.removeChild(splash);
+              }
+            }, 450);
+          }, 650);
+        };
+
+        if (document.readyState === 'complete') {
+          window.mrDismissSplash();
+        } else {
+          window.addEventListener('load', window.mrDismissSplash);
+          setTimeout(window.mrDismissSplash, 1000);
+        }
+      })();
+    </script>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

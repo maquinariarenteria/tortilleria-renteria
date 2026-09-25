@@ -28,6 +28,11 @@ export function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   useEffect(() => {
+    // Dismiss splash screen smoothly
+    if (typeof (window as any).mrDismissSplash === 'function') {
+      (window as any).mrDismissSplash();
+    }
+
     // Record site visit for admin metrics
     recordSiteVisit();
 
