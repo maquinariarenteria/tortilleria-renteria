@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Opportunity } from '../../../types/admin';
 import { getStoredOpportunities, saveStoredOpportunities } from '../../../utils/adminStore';
 import { TrendingUp, ArrowRight, CheckCircle2, Building, DollarSign } from 'lucide-react';
 
 export const OportunidadesTab: React.FC = () => {
   const [opportunities, setOpportunities] = useState<Opportunity[]>(getStoredOpportunities());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setOpportunities(getStoredOpportunities());
+    };
+    window.addEventListener('mr_opps_updated', handleUpdate);
+    return () => window.removeEventListener('mr_opps_updated', handleUpdate);
+  }, []);
 
   const stages: { id: Opportunity['stage']; label: string; headerColor: string; badgeColor: string }[] = [
     { id: 'contacto_inicial', label: '1. Contacto Inicial', headerColor: 'text-slate-700', badgeColor: 'bg-slate-100 text-slate-700' },
@@ -40,6 +48,15 @@ export const OportunidadesTab: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {opportunities.length === 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center space-y-1 shadow-2xs">
+          <p className="text-xs font-bold text-slate-800">Cartera comercial lista para activarse</p>
+          <p className="text-[11px] text-slate-500 max-w-lg mx-auto">
+            Cada vez que un cliente solicite una cotización en la web o agende una cita, se registrará automáticamente como oportunidad para darle seguimiento hasta el anticipo del 50%.
+          </p>
+        </div>
+      )}
 
       {/* Kanban Board */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 overflow-x-auto pb-4">

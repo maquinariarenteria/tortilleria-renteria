@@ -1,29 +1,39 @@
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Send, MessageCircle, Clock, Truck, CreditCard, ShieldCheck } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, MessageCircle, Clock, Truck, CreditCard, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { ScrollReveal } from './ScrollReveal';
 import { sendContactInquiryEmail } from '../utils/emailService';
-import { getSiteConfig } from '../utils/adminStore';
+import { getSiteConfig, recordHotspotClick } from '../utils/adminStore';
+import { CustomerQuote } from '../types/admin';
 
 export const ContactSection: React.FC = () => {
   const config = getSiteConfig();
-  const [submitted, setSubmitted] = useState(false);
+  const [submittedQuote, setSubmittedQuote] = useState<CustomerQuote | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    email: '',
+    city: '',
     message: ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim() || !formData.phone.trim()) return;
+
     setIsSubmitting(true);
-    await sendContactInquiryEmail({
+    recordHotspotClick('Formulario de Contacto');
+
+    const result = await sendContactInquiryEmail({
       name: formData.name,
       phone: formData.phone,
+      email: formData.email,
+      city: formData.city,
       message: formData.message,
     });
+
     setIsSubmitting(false);
-    setSubmitted(true);
+    setSubmittedQuote(result.quote);
   };
 
   return (
@@ -101,24 +111,24 @@ export const ContactSection: React.FC = () => {
                   <div className="flex items-start gap-2.5">
                     <MapPin size={16} className="text-[#2563eb] shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold text-slate-900">Ubicación: </span>
-                      <span>Delicias, Chihuahua, México.</span>
+                      <span className="font-bold text-slate-900">Ubicación de Planta: </span>
+                      <span>Av. Fernando Baeza #1402, Delicias, Chihuahua, México.</span>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-2.5">
                     <Truck size={16} className="text-[#2563eb] shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold text-slate-900">Cobertura de Envíos: </span>
-                      <span className="font-medium text-slate-800">Realizamos envíos seguros a toda la República Mexicana.</span>
+                      <span className="font-bold text-slate-900">Envíos y Fletes: </span>
+                      <span className="font-medium text-slate-800">Envíos seguros a toda la República. El flete se acuerda con el vendedor.</span>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-2.5">
                     <Clock size={16} className="text-[#2563eb] shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold text-slate-900">Producción y Cotizaciones: </span>
-                      <span>Toda la maquinaria se fábrica sobre pedido. Precios mostrados son más gastos de envío.</span>
+                      <span className="font-bold text-slate-900">Producción y Pedidos: </span>
+                      <span>Maquinaria fabricada sobre pedido. Calidad industrial probada en banco.</span>
                     </div>
                   </div>
 
@@ -126,7 +136,7 @@ export const ContactSection: React.FC = () => {
                     <CreditCard size={16} className="text-[#2563eb] shrink-0 mt-0.5" />
                     <div>
                       <span className="font-bold text-slate-900">Formas de Pago: </span>
-                      <span>Transferencia bancaria, depósito y facturación fiscal electrónica.</span>
+                      <span>Transferencia bancaria SPEI, tarjeta en línea (Stripe) y facturación CFDI.</span>
                     </div>
                   </div>
 
@@ -144,7 +154,7 @@ export const ContactSection: React.FC = () => {
                   href="https://wa.me/526391141084?text=Hola%20Maquinaria%20Renteria,%20solicito%20informacion%20y%20cotizacion."
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-3 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 mt-4 shadow-sm transition"
+                  className="w-full py-3 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 mt-4 shadow-sm transition cursor-pointer"
                 >
                   <MessageCircle size={16} />
                   Atención Directa por WhatsApp (639 114 1084)
@@ -163,45 +173,87 @@ export const ContactSection: React.FC = () => {
                   COTIZACIÓN RÁPIDA
                 </span>
                 <h4 className="text-sm font-black uppercase text-slate-900 mb-3">
-                  Déjanos tus datos
+                  Solicita tu cotización
                 </h4>
 
-                {submitted ? (
-                  <div className="py-8 text-center text-xs space-y-1">
-                    <span className="font-bold text-slate-900 block">¡Mensaje Recibido!</span>
-                    <span className="text-slate-500">Un asesor te responderá hoy mismo.</span>
+                {submittedQuote ? (
+                  <div className="py-6 text-center space-y-3">
+                    <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
+                      <CheckCircle2 size={24} />
+                    </div>
+                    <span className="font-black text-slate-900 block text-sm uppercase">¡Cotización Registrada!</span>
+                    <span className="font-mono text-xs font-bold text-[#2563eb] bg-blue-50 px-2.5 py-1 rounded border border-blue-200 inline-block">
+                      Folio: #{submittedQuote.folio}
+                    </span>
+                    <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                      Hemos recibido tu solicitud y la registramos en nuestro sistema comercial. Un asesor se comunicará contigo hoy mismo.
+                    </p>
+                    <a
+                      href={`https://wa.me/526391141084?text=Hola%20Maquinaria%20Renteria,%20acabo%20de%20enviar%20mi%20cotizaci%C3%B3n%20%23${submittedQuote.folio}%20a%20nombre%20de%20${encodeURIComponent(formData.name)}.`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full py-2.5 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs transition mt-2 cursor-pointer"
+                    >
+                      <MessageCircle size={15} />
+                      Continuar por WhatsApp
+                    </a>
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-3 text-xs">
                     <div>
-                      <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Nombre Completo</label>
+                      <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Nombre Completo *</label>
                       <input
                         type="text"
                         required
-                        placeholder="Tu nombre"
+                        placeholder="Tu nombre completo"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="w-full p-2.5 border border-slate-300 rounded-lg focus:border-[#2563eb] focus:outline-none bg-white"
                       />
                     </div>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">WhatsApp / Teléfono *</label>
+                        <input
+                          type="tel"
+                          required
+                          placeholder="10 dígitos"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          className="w-full p-2.5 border border-slate-300 rounded-lg focus:border-[#2563eb] focus:outline-none bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Correo Electrónico</label>
+                        <input
+                          type="email"
+                          placeholder="tu@correo.com"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          className="w-full p-2.5 border border-slate-300 rounded-lg focus:border-[#2563eb] focus:outline-none bg-white"
+                        />
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Teléfono o WhatsApp</label>
+                      <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Ciudad y Estado de Entrega</label>
                       <input
-                        type="tel"
-                        required
-                        placeholder="+52 ..."
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        type="text"
+                        placeholder="Ej. Hermosillo, Sonora"
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                         className="w-full p-2.5 border border-slate-300 rounded-lg focus:border-[#2563eb] focus:outline-none bg-white"
                       />
                     </div>
 
                     <div>
-                      <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Equipo o Capacidad Requerida</label>
+                      <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Equipo o Capacidad Requerida *</label>
                       <textarea
                         rows={2}
-                        placeholder="Ej. Prensa de 1,200/h o comal rotativo..."
+                        required
+                        placeholder="Ej. Prensa de 1,200 tortillas/hora o comal rotativo..."
                         value={formData.message}
                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                         className="w-full p-2.5 border border-slate-300 rounded-lg focus:border-[#2563eb] focus:outline-none bg-white"
@@ -210,10 +262,11 @@ export const ContactSection: React.FC = () => {
 
                     <button
                       type="submit"
-                      className="w-full btn-flat-primary py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs"
+                      disabled={isSubmitting}
+                      className="w-full btn-flat-primary py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
                     >
                       <Send size={14} />
-                      Enviar Solicitud
+                      <span>{isSubmitting ? 'Enviando...' : 'Enviar Solicitud'}</span>
                     </button>
                   </form>
                 )}

@@ -16,6 +16,7 @@ import { Footer } from './components/Footer';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { QuoteCartDrawer } from './components/QuoteCartDrawer';
 import { FloatingActions } from './components/FloatingActions';
+import { AppointmentModal } from './components/AppointmentModal';
 
 export function App() {
   const [isAdmin, setIsAdmin] = useState(() => 
@@ -26,6 +27,10 @@ export function App() {
   const [selectedMachine, setSelectedMachine] = useState<MachineProduct | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  
+  // Appointment modal state
+  const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
+  const [appointmentMachine, setAppointmentMachine] = useState<string>('');
 
   useEffect(() => {
     // Dismiss splash screen smoothly
@@ -115,18 +120,24 @@ export function App() {
     window.location.href = "mailto:maquinariarenteria17@gmail.com?subject=Consulta%20Maquinaria%20Renteria";
   };
 
+  const handleOpenAppointmentModal = (machineName = '') => {
+    setAppointmentMachine(machineName);
+    setIsAppointmentOpen(true);
+  };
+
   const cartMachineIds = cart.map((i) => i.machine.id);
   const totalCartCount = cart.reduce((acc, i) => acc + i.quantity, 0);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans selection:bg-[#2563eb] selection:text-white overflow-x-hidden w-full relative">
       
-      {/* 1. Header with Cart Badge */}
+      {/* 1. Header with Cart Badge & Appointment Button */}
       <Navbar
         cartCount={totalCartCount}
         onOpenCart={() => setIsCartOpen(true)}
         currency={currency}
         onToggleCurrency={() => setCurrency(currency === 'USD' ? 'MXN' : 'USD')}
+        onOpenAppointment={() => handleOpenAppointmentModal()}
       />
 
       {/* 2. Minimalist Hero */}
@@ -147,7 +158,7 @@ export function App() {
         cartMachineIds={cartMachineIds}
       />
 
-      {/* 5. Production Process (NEW: 5 Steps with scroll animation from sides) */}
+      {/* 5. Production Process (5 Steps with scroll animation from sides) */}
       <ProductionProcess />
 
       {/* 6. Complete Catalog */}
@@ -159,27 +170,28 @@ export function App() {
         cartMachineIds={cartMachineIds}
       />
 
-      {/* 7. Sectors Section (NEW: Taquerías, Supermercados, Burritos with scroll animation) */}
+      {/* 7. Sectors Section */}
       <SectorsSection onSelectSector={scrollToCatalog} />
 
-      {/* 8. Testimonials Section (NEW: Client proof with scroll animation) */}
+      {/* 8. Testimonials Section */}
       <TestimonialsSection />
 
-      {/* 9. FAQ Section (NEW: Accordion with scroll animation) */}
+      {/* 9. FAQ Section */}
       <FaqSection />
 
-      {/* 10. Contact Section (Enters from sides) */}
+      {/* 10. Contact Section */}
       <ContactSection />
 
       {/* 11. Footer */}
       <Footer />
 
-      {/* 12. Floating Action Buttons (Official WhatsApp + Official Email) */}
+      {/* 12. Floating Action Buttons (Official WhatsApp + Email + Cita Demo) */}
       <FloatingActions
         onOpenEmail={handleOpenEmail}
+        onOpenAppointment={() => handleOpenAppointmentModal()}
       />
 
-      {/* 13. Floating Product Detail Modal (Summarized Big Font Text) */}
+      {/* 13. Floating Product Detail Modal */}
       {selectedMachine && (
         <ProductDetailModal
           machine={selectedMachine}
@@ -187,6 +199,7 @@ export function App() {
           onClose={() => setSelectedMachine(null)}
           onAddToCart={handleAddToCart}
           isInCart={cartMachineIds.includes(selectedMachine.id)}
+          onScheduleDemo={(machineName) => handleOpenAppointmentModal(machineName)}
         />
       )}
 
@@ -199,6 +212,13 @@ export function App() {
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
         onClearCart={handleClearCart}
+      />
+
+      {/* 15. Appointment Booking Modal */}
+      <AppointmentModal
+        isOpen={isAppointmentOpen}
+        onClose={() => setIsAppointmentOpen(false)}
+        preselectedMachine={appointmentMachine}
       />
 
     </div>

@@ -6,6 +6,7 @@ interface NavbarProps {
   onOpenCart: () => void;
   currency: 'USD' | 'MXN';
   onToggleCurrency: () => void;
+  onOpenAppointment?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -13,6 +14,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCart,
   currency,
   onToggleCurrency,
+  onOpenAppointment,
 }) => {
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xs border-b border-slate-200">
@@ -39,14 +41,31 @@ export const Navbar: React.FC<NavbarProps> = ({
         <nav className="hidden md:flex items-center gap-6 text-xs font-bold uppercase text-slate-600">
           <a href="#" className="text-[#2563eb]">Inicio</a>
           <a href="#catalog-section" className="hover:text-slate-900 transition">Catálogo</a>
+          {onOpenAppointment && (
+            <button
+              onClick={onOpenAppointment}
+              className="hover:text-[#2563eb] transition uppercase cursor-pointer"
+            >
+              Agendar Cita
+            </button>
+          )}
           <a href="#contact-section" className="hover:text-slate-900 transition">Contacto</a>
         </nav>
 
-        {/* Actions: Currency & Cart */}
+        {/* Actions: Currency, Appointment & Cart */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {onOpenAppointment && (
+            <button
+              onClick={onOpenAppointment}
+              className="hidden sm:flex items-center gap-1.5 bg-blue-50 text-[#2563eb] hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-bold transition uppercase tracking-wide cursor-pointer"
+            >
+              <span>📅 Agendar Cita</span>
+            </button>
+          )}
+
           <button
             onClick={onToggleCurrency}
-            className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2 sm:px-3 py-1.5 rounded transition"
+            className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2 sm:px-3 py-1.5 rounded transition cursor-pointer"
           >
             <Globe size={12} className="text-[#2563eb]" />
             <span>{currency === 'USD' ? 'USD' : 'MXN'}</span>

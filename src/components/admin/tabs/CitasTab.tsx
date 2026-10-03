@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Appointment } from '../../../types/admin';
 import { getStoredAppointments, saveStoredAppointments } from '../../../utils/adminStore';
 import { Calendar, Clock, MapPin, Video, Phone, CheckCircle2, Plus, X, User } from 'lucide-react';
@@ -6,6 +6,14 @@ import { Calendar, Clock, MapPin, Video, Phone, CheckCircle2, Plus, X, User } fr
 export const CitasTab: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>(getStoredAppointments());
   const [showNewModal, setShowNewModal] = useState(false);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setAppointments(getStoredAppointments());
+    };
+    window.addEventListener('mr_appointments_updated', handleUpdate);
+    return () => window.removeEventListener('mr_appointments_updated', handleUpdate);
+  }, []);
 
   // New Appointment Form
   const [customerName, setCustomerName] = useState('');
@@ -80,7 +88,16 @@ export const CitasTab: React.FC = () => {
 
       {/* Grid of Appointments */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {appointments.map((apt) => (
+        {appointments.length === 0 ? (
+          <div className="col-span-full bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-3">
+            <Calendar className="w-10 h-10 text-slate-300 mx-auto" />
+            <h3 className="font-black text-slate-800 text-sm uppercase tracking-wide">Aún no hay citas agendadas</h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              Cuando un cliente agende una cita o demostración desde la web mediante el botón "Agendar Cita", aparecerá aquí en tiempo real para acordar detalles directamente con él.
+            </p>
+          </div>
+        ) : (
+          appointments.map((apt) => (
           <div
             key={apt.id}
             className="bg-white border border-slate-200 hover:border-blue-300 p-5 rounded-2xl shadow-sm space-y-3.5 transition-all flex flex-col justify-between"
@@ -152,7 +169,7 @@ export const CitasTab: React.FC = () => {
               </div>
             </div>
           </div>
-        ))}
+        )))}
       </div>
 
       {/* New Appointment Modal */}

@@ -17,7 +17,6 @@ export const AdminNavbar: React.FC<AdminNavbarProps> = ({
     { id: 'cotizaciones', label: 'Cotizaciones', badge: pendingQuotesCount },
     { id: 'citas', label: 'Citas' },
     { id: 'ventas', label: 'Ventas' },
-    { id: 'cupones', label: 'Cupones' },
     { id: 'oportunidades', label: 'Oportunidades' },
     { id: 'pruebas_ab', label: 'Prueba A/B' },
     { id: 'mapa_clics', label: 'Mapa de clics y recorridos' },

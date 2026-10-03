@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CustomerQuote } from '../../../types/admin';
 import { getStoredQuotes, updateStoredQuoteStatus } from '../../../utils/adminStore';
 import { Search, Phone, MapPin, X, Edit3, MessageSquare } from 'lucide-react';
@@ -10,6 +10,14 @@ export const CotizacionesTab: React.FC = () => {
   const [selectedQuote, setSelectedQuote] = useState<CustomerQuote | null>(null);
   const [editNotes, setEditNotes] = useState<string>('');
   const [editStatus, setEditStatus] = useState<CustomerQuote['status']>('Nueva');
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setQuotes(getStoredQuotes());
+    };
+    window.addEventListener('mr_quotes_updated', handleUpdate);
+    return () => window.removeEventListener('mr_quotes_updated', handleUpdate);
+  }, []);
 
   const filtered = quotes.filter(q => {
     const matchesFilter = filterStatus === 'Todas' || q.status === filterStatus;

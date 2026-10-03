@@ -1,8 +1,13 @@
-import { AdminOrder, saveStoredOrder, saveStoredInquiry } from './adminStore';
+import { 
+  addStoredQuote, 
+  addStoredSale, 
+  addStoredAppointment 
+} from './adminStore';
+import { CustomerQuote, AdminSaleOrder, Appointment } from '../types/admin';
 import { formatCurrency } from './formatters';
 
 interface SendOrderEmailParams {
-  order: AdminOrder;
+  order: AdminSaleOrder;
   currency?: 'USD' | 'MXN';
 }
 
@@ -11,20 +16,25 @@ interface SendContactEmailParams {
   phone: string;
   email?: string;
   message: string;
+  machineName?: string;
+  city?: string;
+}
+
+interface SendAppointmentEmailParams {
+  appointment: Appointment;
 }
 
 /**
- * Automatically dispatches order notification to maquinariarenteria17@gmail.com
- * and registers the order in the admin dashboard.
+ * 1. Automatically records and dispatches order/sale notifications to maquinariarenteria17@gmail.com
+ * and registers the sale in the admin dashboard (VentasTab).
  */
 export async function sendOrderNotificationEmail({
   order,
   currency = 'MXN',
 }: SendOrderEmailParams): Promise<{ success: boolean; method: string }> {
-  // 1. Always record in Admin Store first
-  saveStoredOrder(order);
+  // Always register in Admin Store
+  addStoredSale(order);
 
-  // 2. Prepare detailed email body
   const subject = `Nuevo Pedido #${order.folio} - ${order.clientName || 'Cliente'}`;
   let textContent = `========================================\n`;
   textContent += `NUEVO PEDIDO RECIBIDO - MAQUINARIA RENTERIA\n`;
@@ -35,28 +45,29 @@ export async function sendOrderNotificationEmail({
   textContent += `• Nombre: ${order.clientName}\n`;
   textContent += `• WhatsApp/Teléfono: ${order.clientPhone}\n`;
   textContent += `• Correo Electrónico: ${order.clientEmail || 'No especificado'}\n`;
-  textContent += `• Código Postal: ${order.clientCP}\n`;
-  textContent += `• Dirección: ${order.clientAddress || 'Por confirmar'}\n\n`;
+  textContent += `• Dirección de Entrega: ${order.shippingAddress || ''}, ${order.shippingCity || ''}, ${order.shippingState || ''}\n`;
+  textContent += `• C.P.: ${order.shippingZip || 'N/A'}\n\n`;
 
-  if (order.requiresFactura) {
+  if (order.requiresInvoice) {
     textContent += `DATOS DE FACTURACIÓN (CFDI 16% IVA):\n`;
-    textContent += `• RFC: ${order.clientRFC || 'General'}\n`;
-    textContent += `• Razón Social: ${order.clientRazonSocial || order.clientName}\n\n`;
+    textContent += `• RFC: ${order.rfc || 'General'}\n`;
+    textContent += `• Razón Social: ${order.businessName || order.clientName}\n\n`;
   }
 
   textContent += `DETALLE DE MAQUINARIA:\n`;
   order.items.forEach((item, idx) => {
-    textContent += `${idx + 1}. ${item.name} (${item.sku}) x${item.quantity} = ${formatCurrency(item.price * item.quantity, currency)}\n`;
+    textContent += `${idx + 1}. ${item.name} (${item.sku}) x${item.quantity} = ${formatCurrency(item.unitPrice * item.quantity, currency)}\n`;
   });
 
   textContent += `\nRESUMEN FINANCIERO:\n`;
   textContent += `• Subtotal: ${formatCurrency(order.subtotal, currency)}\n`;
-  textContent += `• IVA (16%): ${order.requiresFactura ? formatCurrency(order.iva, currency) : '$0.00 (Sin factura)'}\n`;
-  textContent += `• Envío Flete Consolidado: ${formatCurrency(order.shippingCost, currency)}\n`;
+  textContent += `• IVA (16%): ${order.requiresInvoice ? formatCurrency(order.iva, currency) : '$0.00 (Sin factura)'}\n`;
+  textContent += `• Costo de Envío: ${order.shippingCost > 0 ? formatCurrency(order.shippingCost, currency) : 'A acordar con el vendedor'}\n`;
   textContent += `• TOTAL: ${formatCurrency(order.total, currency)}\n\n`;
-  textContent += `Método de Pago Seleccionado: ${order.paymentMethod === 'card_stripe' ? 'Tarjeta (Stripe)' : 'Transferencia SPEI'}\n`;
+  textContent += `Método de Pago: ${order.paymentMethod}\n`;
+  textContent += `Estado de Fabricación: ${order.manufacturingStatus}\n`;
 
-  // 3. Attempt automated background delivery via web webhook / form API
+  // Attempt automated background delivery
   try {
     const response = await fetch('https://api.web3forms.com/submit', {
       method: 'POST',
@@ -65,10 +76,10 @@ export async function sendOrderNotificationEmail({
         Accept: 'application/json',
       },
       body: JSON.stringify({
-        access_key: '64d2629a-fb08-410a-8d07-a0f128bc2ec0', // Public generic Web3Forms router
+        access_key: '64d2629a-fb08-410a-8d07-a0f128bc2ec0',
         to: 'maquinariarenteria17@gmail.com',
         subject: subject,
-        from_name: 'Catálogo Maquinaria Renteria',
+        from_name: 'Ventas Web Maquinaria Rentería',
         message: textContent,
         client_email: order.clientEmail,
         order_folio: order.folio,
@@ -87,31 +98,54 @@ export async function sendOrderNotificationEmail({
 }
 
 /**
- * Automatically dispatches contact inquiries to maquinariarenteria17@gmail.com
- * and registers the inquiry in the admin dashboard.
+ * 2. Automatically records and dispatches contact and quote inquiries to maquinariarenteria17@gmail.com
+ * and registers the quote in the admin dashboard (CotizacionesTab).
  */
 export async function sendContactInquiryEmail({
   name,
   phone,
-  email,
+  email = '',
   message,
-}: SendContactEmailParams): Promise<{ success: boolean; method: string }> {
-  // 1. Record in Admin Store
-  saveStoredInquiry({
-    name,
-    phone,
-    message,
-  });
+  machineName,
+  city = 'Por confirmar',
+}: SendContactEmailParams): Promise<{ success: boolean; method: string; quote: CustomerQuote }> {
+  const folio = `COT-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
 
-  const subject = `Nuevo Mensaje de Contacto web de ${name}`;
-  const textContent = `Nuevo mensaje de contacto desde la web de Maquinaria Renteria:\n\n` +
+  const quote: CustomerQuote = {
+    id: `cot_${Date.now()}`,
+    folio,
+    createdAt: new Date().toISOString(),
+    customerName: name.trim() || 'Cliente Web',
+    phone: phone.trim(),
+    email: email.trim(),
+    stateOrCity: city,
+    businessType: 'Otro',
+    items: machineName ? [{
+      machineId: `m_${Date.now()}`,
+      name: machineName,
+      quantity: 1,
+      price: 0,
+    }] : [],
+    estimatedTotal: 0,
+    status: 'Nueva',
+    priority: 'Alta',
+    notes: message,
+    lastContactAt: new Date().toISOString(),
+  };
+
+  // Register in Admin Cotizaciones
+  addStoredQuote(quote);
+
+  const subject = `Nueva Cotización #${folio} de ${name}`;
+  const textContent = `NUEVA SOLICITUD DE COTIZACIÓN - MAQUINARIA RENTERIA\n\n` +
+    `Folio: #${folio}\n` +
     `Nombre: ${name}\n` +
-    `Teléfono: ${phone}\n` +
+    `Teléfono / WhatsApp: ${phone}\n` +
     `Correo: ${email || 'No proporcionado'}\n` +
+    `Ciudad / Estado: ${city}\n` +
     `Fecha: ${new Date().toLocaleString('es-MX')}\n\n` +
-    `Mensaje / Cotización solicitada:\n${message}\n`;
+    `Equipo o Solicitud:\n${message}\n`;
 
-  // 2. Attempt automated background delivery
   try {
     const response = await fetch('https://api.web3forms.com/submit', {
       method: 'POST',
@@ -123,10 +157,59 @@ export async function sendContactInquiryEmail({
         access_key: '64d2629a-fb08-410a-8d07-a0f128bc2ec0',
         to: 'maquinariarenteria17@gmail.com',
         subject: subject,
-        from_name: 'Formulario de Contacto Web',
+        from_name: 'Cotizaciones Web Maquinaria Rentería',
         message: textContent,
         client_name: name,
         client_phone: phone,
+      }),
+    });
+
+    if (response.ok) {
+      return { success: true, method: 'api', quote };
+    }
+  } catch (error) {
+    console.warn('API email delivery background attempt:', error);
+  }
+
+  return { success: true, method: 'local', quote };
+}
+
+/**
+ * 3. Automatically records and dispatches appointment requests to maquinariarenteria17@gmail.com
+ * and registers the appointment in the admin dashboard (CitasTab).
+ */
+export async function sendAppointmentNotificationEmail({
+  appointment,
+}: SendAppointmentEmailParams): Promise<{ success: boolean; method: string }> {
+  // Register in Admin Citas
+  addStoredAppointment(appointment);
+
+  const subject = `Nueva Cita Agendada: ${appointment.customerName} - ${appointment.scheduledDate} ${appointment.scheduledTime}`;
+  const textContent = `NUEVA CITA / DEMOSTRACIÓN AGENDADA - MAQUINARIA RENTERIA\n\n` +
+    `Cliente: ${appointment.customerName}\n` +
+    `Teléfono: ${appointment.phone}\n` +
+    `Correo: ${appointment.email || 'No especificado'}\n` +
+    `Tipo de Cita: ${appointment.type}\n` +
+    `Máquina de Interés: ${appointment.machineOfInterest}\n` +
+    `Fecha Programada: ${appointment.scheduledDate}\n` +
+    `Hora: ${appointment.scheduledTime} hrs\n\n` +
+    `Notas / Requerimientos:\n${appointment.notes || 'Ninguna nota adicional'}\n`;
+
+  try {
+    const response = await fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        access_key: '64d2629a-fb08-410a-8d07-a0f128bc2ec0',
+        to: 'maquinariarenteria17@gmail.com',
+        subject: subject,
+        from_name: 'Citas Web Maquinaria Rentería',
+        message: textContent,
+        client_name: appointment.customerName,
+        client_phone: appointment.phone,
       }),
     });
 

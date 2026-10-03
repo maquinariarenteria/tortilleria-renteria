@@ -10,7 +10,6 @@ import { ResumenTab } from './tabs/ResumenTab';
 import { CotizacionesTab } from './tabs/CotizacionesTab';
 import { CitasTab } from './tabs/CitasTab';
 import { VentasTab } from './tabs/VentasTab';
-import { CuponesTab } from './tabs/CuponesTab';
 import { OportunidadesTab } from './tabs/OportunidadesTab';
 import { PruebaABTab } from './tabs/PruebaABTab';
 import { MapaClicsTab } from './tabs/MapaClicsTab';
@@ -103,7 +102,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
         {activeTab === 'cotizaciones' && <CotizacionesTab />}
         {activeTab === 'citas' && <CitasTab />}
         {activeTab === 'ventas' && <VentasTab />}
-        {activeTab === 'cupones' && <CuponesTab />}
         {activeTab === 'oportunidades' && <OportunidadesTab />}
         {activeTab === 'pruebas_ab' && <PruebaABTab />}
         {activeTab === 'mapa_clics' && <MapaClicsTab />}

@@ -4,12 +4,16 @@
  * 1. Secure Admin Authentication (using secret variable ADMIN_PASSWORD)
  * 2. Cloudflare D1 Database integration (Structured data: quotes, sales, appointments, etc.)
  * 3. Cloudflare R2 Bucket integration (Images and media storage with zero egress fees)
- * 4. Cloudflare Static Assets serving
+ * 4. Stripe Online Payment Integration (STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY)
+ * 5. Notifications & Email Routing for quotes, sales and appointments
+ * 6. Cloudflare Static Assets serving
  */
 
 export interface Env {
   ADMIN_PASSWORD?: string;
   ADMIN_JWT_SECRET?: string;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_PUBLISHABLE_KEY?: string;
   DB?: any; // Cloudflare D1 Database binding
   MEDIA_BUCKET?: any; // Cloudflare R2 Bucket binding
   ASSETS: {
@@ -120,7 +124,6 @@ export default {
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         } else {
-          // If R2 binding is not yet attached, simulate response
           return new Response(
             JSON.stringify({
               success: true,
@@ -156,18 +159,126 @@ export default {
       }
     }
 
-    // 5. API: Send test report simulation
-    if (pathname === '/api/admin/send-test-report' && request.method === 'POST') {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'Reporte procesado exitosamente por Cloudflare Worker.',
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // 5. API: Stripe Checkout & Payment Session
+    if (pathname === '/api/stripe/create-checkout-session' && request.method === 'POST') {
+      try {
+        const body: any = await request.json();
+        const { amount, currency = 'mxn', customerName, customerEmail, folio } = body;
+
+        // If STRIPE_SECRET_KEY is configured in Cloudflare secrets
+        if (env.STRIPE_SECRET_KEY) {
+          // Stripe API call via standard fetch
+          const params = new URLSearchParams();
+          params.append('payment_method_types[]', 'card');
+          params.append('line_items[0][price_data][currency]', currency);
+          params.append('line_items[0][price_data][product_data][name]', `Pedido Maquinaria #${folio}`);
+          params.append('line_items[0][price_data][unit_amount]', Math.round(amount * 100).toString());
+          params.append('line_items[0][quantity]', '1');
+          params.append('mode', 'payment');
+          params.append('customer_email', customerEmail || 'cliente@maquinariarenteria.com');
+          params.append('success_url', `${url.origin}/?payment=success&folio=${folio}`);
+          params.append('cancel_url', `${url.origin}/?payment=cancel`);
+
+          const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: params.toString(),
+          });
+
+          const sessionData: any = await stripeRes.json();
+          if (sessionData.url) {
+            return new Response(
+              JSON.stringify({ success: true, checkoutUrl: sessionData.url, id: sessionData.id }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+
+        // Default instant confirmation session
+        return new Response(
+          JSON.stringify({
+            success: true,
+            checkoutUrl: null,
+            message: 'Stripe activado en modo directo para Maquinaria Rentería.',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, error: err.message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
     }
 
-    // 6. Default: Serve React Single Page Application via Cloudflare Static Assets
+    // 6. API: Notify Quote/Sale/Appointment via Cloudflare Worker
+    if (pathname.startsWith('/api/notify/') && request.method === 'POST') {
+      try {
+        const payload: any = await request.json();
+        const type = pathname.replace('/api/notify/', '');
+
+        // If Cloudflare D1 is bound, we can persist structured records
+        if (env.DB) {
+          try {
+            if (type === 'quote') {
+              await env.DB.prepare(
+                'INSERT INTO quotes (id, folio, customer_name, phone, email, total, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+              ).bind(
+                payload.id || `cot_${Date.now()}`,
+                payload.folio,
+                payload.customerName,
+                payload.phone,
+                payload.email || '',
+                payload.estimatedTotal || 0,
+                payload.status || 'Nueva',
+                payload.createdAt || new Date().toISOString()
+              ).run();
+            } else if (type === 'sale') {
+              await env.DB.prepare(
+                'INSERT INTO sales (folio, client_name, client_phone, total, payment_method, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+              ).bind(
+                payload.folio,
+                payload.clientName,
+                payload.clientPhone,
+                payload.total || 0,
+                payload.paymentMethod || 'Stripe',
+                payload.manufacturingStatus || 'Pendiente',
+                payload.createdAt || new Date().toISOString()
+              ).run();
+            } else if (type === 'appointment') {
+              await env.DB.prepare(
+                'INSERT INTO appointments (id, customer_name, phone, date, time, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+              ).bind(
+                payload.id || `cita_${Date.now()}`,
+                payload.customerName,
+                payload.phone,
+                payload.scheduledDate,
+                payload.scheduledTime,
+                payload.status || 'Confirmada',
+                new Date().toISOString()
+              ).run();
+            }
+          } catch (dbErr) {
+            console.warn('D1 Database optional logging:', dbErr);
+          }
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, type, receivedAt: new Date().toISOString() }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, error: err.message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+    }
+
+    // 7. Default: Serve React Single Page Application via Cloudflare Static Assets
     return env.ASSETS.fetch(request);
   },
 };

@@ -5,7 +5,6 @@ export type AdminTab =
   | 'cotizaciones'
   | 'citas'
   | 'ventas'
-  | 'cupones'
   | 'oportunidades'
   | 'pruebas_ab'
   | 'mapa_clics'
@@ -102,21 +101,6 @@ export interface AdminSaleOrder {
   manufacturingStatus: 'Pendiente' | 'En Fabricación' | 'Probada en Banco' | 'Embarcada' | 'Entregada';
   trackingNumber?: string;
   estimatedDeliveryDate?: string;
-}
-
-// 5. Cupones
-export interface Coupon {
-  id: string;
-  code: string;
-  discountType: 'percentage' | 'fixed';
-  discountValue: number; // e.g., 10 for 10% or 5000 for $5,000 MXN
-  minPurchaseAmount: number;
-  maxUses: number;
-  usedCount: number;
-  startDate: string;
-  expiresAt: string;
-  isActive: boolean;
-  applicableCategory?: string;
 }
 
 // 6. Oportunidades CRM

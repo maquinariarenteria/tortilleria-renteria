@@ -1,7 +1,7 @@
 import { MachineProduct } from '../types';
 import { MACHINES_DATA } from '../data/machines';
 import { 
-  CustomerQuote, Appointment, AdminSaleOrder, Coupon, 
+  CustomerQuote, Appointment, AdminSaleOrder, 
   Opportunity, ABExperiment, ClickHotspot, UserJourneyPath, 
   PriceOfferItem, WebHealthMetrics, SecurityAuditLog, 
   SecuritySettings, AdminSettingsConfig 
@@ -52,6 +52,7 @@ export interface ContactInquiry {
   createdAt: string;
   name: string;
   phone: string;
+  email?: string;
   message: string;
   status: 'Nuevo' | 'Atendido';
 }
@@ -67,419 +68,119 @@ const DEFAULT_CONFIG: SiteConfig = {
   facebookUrl: 'https://www.facebook.com/share/19Zrjb7iP2/?mibextid=wwXIfr',
   tiktokUrl: 'https://www.tiktok.com/@maquinaria.renteria?_r=1&_t=ZS-99a303xcAsv',
   stripePaymentLink: 'https://buy.stripe.com/maquinariarenteria',
-  shippingNotice: 'Envíos a toda la República Mexicana • Maquinaria sobre pedido • Precios más envío e IVA',
+  shippingNotice: 'Envíos a toda la República Mexicana • Costo de envío a acordar con el vendedor • Precios de equipos no incluyen flete',
 };
 
 const STORAGE_KEYS = {
-  CONFIG: 'mr_site_config_v1',
-  MACHINES: 'mr_machines_catalog_v1',
+  CONFIG: 'mr_site_config_v2',
+  MACHINES: 'mr_machines_catalog_v2',
   AUTH: 'mr_admin_cloudflare_auth_v2',
   AUTH_TOKEN: 'mr_admin_cloudflare_token_v2',
-  QUOTES: 'mr_quotes_v2',
-  APPOINTMENTS: 'mr_appointments_v1',
-  SALES: 'mr_sales_v2',
-  COUPONS: 'mr_coupons_v1',
-  OPPORTUNITIES: 'mr_opportunities_v1',
-  AB_TESTS: 'mr_ab_tests_v1',
-  CLICKS: 'mr_click_map_v1',
-  OFFERS: 'mr_price_offers_v1',
-  HEALTH: 'mr_web_health_v1',
-  SECURITY: 'mr_security_v1',
-  SETTINGS: 'mr_settings_exact_v1',
-  ANALYTICS: 'mr_real_analytics_v1',
+  QUOTES: 'mr_quotes_real_v3',
+  APPOINTMENTS: 'mr_appointments_real_v3',
+  SALES: 'mr_sales_real_v3',
+  OPPORTUNITIES: 'mr_opportunities_real_v3',
+  AB_TESTS: 'mr_ab_tests_v2',
+  CLICKS: 'mr_click_map_v2',
+  OFFERS: 'mr_price_offers_v2',
+  HEALTH: 'mr_web_health_v2',
+  SECURITY: 'mr_security_real_v3',
+  SETTINGS: 'mr_settings_exact_v2',
+  ANALYTICS: 'mr_real_analytics_v2',
 };
 
-// Purge any leftover session or cache from the old administrator
+// Purge any old mock/fake test data from previous runs
 try {
   if (typeof window !== 'undefined' && window.localStorage) {
     localStorage.removeItem('mr_admin_auth_v1');
     localStorage.removeItem('mr_admin_token_v1');
     localStorage.removeItem('mr_orders_v1');
     localStorage.removeItem('mr_inquiries_v1');
+    localStorage.removeItem('mr_quotes_v2');
+    localStorage.removeItem('mr_appointments_v1');
+    localStorage.removeItem('mr_sales_v2');
+    localStorage.removeItem('mr_opportunities_v1');
+    localStorage.removeItem('mr_coupons_v1');
   }
 } catch {}
 
-// Datos 100% Reales de Clientes y Cotizaciones de Maquinaria Rentería
-export const INITIAL_QUOTES: CustomerQuote[] = [
-  {
-    id: 'cot_101',
-    folio: 'COT-2026-089',
-    createdAt: '2026-10-02T14:32:00Z',
-    customerName: 'Roberto Garza Morales',
-    phone: '811 492 8841',
-    email: 'roberto.garza@tortillasnorte.com',
-    stateOrCity: 'Monterrey, Nuevo León',
-    businessType: 'Tortillería de harina',
-    items: [
-      {
-        machineId: 'rodillo-doble-pro',
-        name: 'Rodillo Doble Grado Industrial Acero Inox',
-        quantity: 1,
-        price: 88500,
-        capacity: '1,200 tortillas/hora',
-        energyType: 'Gas LP y Bifásica',
-      }
-    ],
-    estimatedTotal: 88500,
-    status: 'Nueva',
-    priority: 'Alta',
-    notes: 'Apertura de nueva sucursal en San Nicolás. Preguntó por costo de flete por Transportes Castores.',
-    lastContactAt: '2026-10-02T14:32:00Z',
-  },
-  {
-    id: 'cot_102',
-    folio: 'COT-2026-088',
-    createdAt: '2026-09-30T10:15:00Z',
-    customerName: 'María Elena Beltrán',
-    phone: '667 219 4430',
-    email: 'maria.beltran@burritosdelreal.mx',
-    stateOrCity: 'Culiacán, Sinaloa',
-    businessType: 'Fábrica de burritos',
-    items: [
-      {
-        machineId: 'prensa-automatica-30',
-        name: 'Prensa Automática Continua 30cm',
-        quantity: 2,
-        price: 125000,
-        capacity: '1,800 tortillas/hora',
-        energyType: 'Gas LP / Trifásica',
-      }
-    ],
-    estimatedTotal: 250000,
-    status: 'En Negociación',
-    priority: 'Alta',
-    notes: 'Interesada en esquema de 50% anticipo y 50% contra aviso de embarque. Requiere factura con CFDI.',
-    lastContactAt: '2026-10-01T16:00:00Z',
-  },
-  {
-    id: 'cot_103',
-    folio: 'COT-2026-087',
-    createdAt: '2026-09-28T18:20:00Z',
-    customerName: 'Javier Quintanilla Solís',
-    phone: '614 302 9911',
-    email: 'javier.quintanilla@taqueriaselpaisa.com',
-    stateOrCity: 'Chihuahua, Chih.',
-    businessType: 'Taquería',
-    items: [
-      {
-        machineId: 'batidora-harina-50kg',
-        name: 'Batidora de Harina Espiral 50kg Acero Inox',
-        quantity: 1,
-        price: 46000,
-        capacity: '50 kg masa',
-        energyType: 'Bifásica 220V',
-      }
-    ],
-    estimatedTotal: 46000,
-    status: 'Contactada',
-    priority: 'Media',
-    notes: 'Se le envió catálogo digital y video demostrativo de amasado rápido por WhatsApp.',
-    lastContactAt: '2026-09-29T11:30:00Z',
-  }
-];
+// 100% REAL DATA: Initial states start empty until real users interact with the site
+export const INITIAL_QUOTES: CustomerQuote[] = [];
+export const INITIAL_APPOINTMENTS: Appointment[] = [];
+export const INITIAL_SALES: AdminSaleOrder[] = [];
+export const INITIAL_OPPORTUNITIES: Opportunity[] = [];
 
-// Citas Reales en Taller Físico (Delicias, Chih.) y Demostraciones Virtuales
-export const INITIAL_APPOINTMENTS: Appointment[] = [
-  {
-    id: 'apt_201',
-    customerName: 'Ing. Fernando Ortiz Mendoza',
-    phone: '639 123 7744',
-    email: 'fortiz@superdelicias.com',
-    type: 'Demostración en Taller (Delicias, Chih.)',
-    machineOfInterest: 'Rodillo Doble y Prensa Continua',
-    scheduledDate: '2026-10-06',
-    scheduledTime: '11:00',
-    status: 'Confirmada',
-    notes: 'Asistirá a planta con su maestro tortillero para probar harina con receta propia.',
-    reminderSent: true,
-  },
-  {
-    id: 'apt_202',
-    customerName: 'Roberto Garza Morales',
-    phone: '811 492 8841',
-    email: 'roberto.garza@tortillasnorte.com',
-    type: 'Videollamada en Vivo',
-    machineOfInterest: 'Rodillo Doble Grado Industrial',
-    scheduledDate: '2026-10-05',
-    scheduledTime: '16:00',
-    status: 'Confirmada',
-    notes: 'Demostración en vivo de calibración de espesor y salida de tortilla caliente.',
-    reminderSent: false,
-  }
-];
-
-// Ventas y Órdenes Reales de Maquinaria
-export const INITIAL_SALES: AdminSaleOrder[] = [
-  {
-    folio: 'MR-VT-2026-042',
-    createdAt: '2026-09-27T12:00:00Z',
-    clientName: 'Alimentos La Espiga S.A. de C.V.',
-    clientPhone: '656 410 2200',
-    clientEmail: 'compras@laespiga.com',
-    shippingAddress: 'Av. Tecnológico #4500, Parque Industrial Juárez',
-    shippingCity: 'Ciudad Juárez',
-    shippingState: 'Chihuahua',
-    shippingZip: '32500',
-    requiresInvoice: true,
-    rfc: 'ALE180412KJ1',
-    businessName: 'Alimentos La Espiga S.A. de C.V.',
-    cfdiUsage: 'G03 - Gastos en general',
-    items: [
-      {
-        id: 'rodillo-doble-pro',
-        name: 'Rodillo Doble Grado Industrial Acero Inox',
-        sku: 'MR-RD-2026',
-        quantity: 1,
-        unitPrice: 88500,
-        total: 88500,
-      }
-    ],
-    subtotal: 88500,
-    iva: 14160,
-    shippingCost: 3500,
-    total: 106160,
-    paymentMethod: 'Transferencia SPEI',
-    manufacturingStatus: 'En Fabricación',
-    trackingNumber: 'CAST-99218402',
-    estimatedDeliveryDate: '2026-10-12',
-  },
-  {
-    folio: 'MR-VT-2026-041',
-    createdAt: '2026-09-18T16:45:00Z',
-    clientName: 'Taquerías El Pastorcito',
-    clientPhone: '55 3049 8812',
-    clientEmail: 'gerencia@elpastorcito.mx',
-    shippingAddress: 'Calzada de Tlalpan #1840, Col. Country Club',
-    shippingCity: 'Benito Juárez',
-    shippingState: 'Ciudad de México',
-    shippingZip: '03500',
-    requiresInvoice: false,
-    items: [
-      {
-        id: 'horno-tres-pasos',
-        name: 'Horno de 3 Pasos Térmico Ahorrador de Gas',
-        sku: 'MR-H3-PRO',
-        quantity: 1,
-        unitPrice: 65000,
-        total: 65000,
-      }
-    ],
-    subtotal: 65000,
-    iva: 0,
-    shippingCost: 4200,
-    total: 69200,
-    paymentMethod: 'Stripe',
-    manufacturingStatus: 'Entregada',
-    trackingNumber: 'TMMX-99482103',
-  }
-];
-
-// Cupones y Promociones Oficiales
-export const INITIAL_COUPONS: Coupon[] = [
-  {
-    id: 'cup_1',
-    code: 'RENTERIA10',
-    discountType: 'percentage',
-    discountValue: 10,
-    minPurchaseAmount: 40000,
-    maxUses: 20,
-    usedCount: 7,
-    startDate: '2026-09-01',
-    expiresAt: '2026-10-31',
-    isActive: true,
-  },
-  {
-    id: 'cup_2',
-    code: 'FLETEGRATIS',
-    discountType: 'fixed',
-    discountValue: 3500,
-    minPurchaseAmount: 60000,
-    maxUses: 15,
-    usedCount: 5,
-    startDate: '2026-09-15',
-    expiresAt: '2026-11-15',
-    isActive: true,
-  },
-  {
-    id: 'cup_3',
-    code: 'EXPOAGRO2026',
-    discountType: 'percentage',
-    discountValue: 15,
-    minPurchaseAmount: 100000,
-    maxUses: 10,
-    usedCount: 10,
-    startDate: '2026-08-01',
-    expiresAt: '2026-09-30',
-    isActive: false,
-  }
-];
-
-// Pipeline Comercial CRM con Maquinaria Rentería
-export const INITIAL_OPPORTUNITIES: Opportunity[] = [
-  {
-    id: 'opp_1',
-    companyOrClient: 'Tortillas y Harinas del Bravo',
-    contactName: 'Ing. Carlos Madrigal',
-    phone: '614 201 5599',
-    stage: 'aprobacion_anticipo',
-    dealValue: 340000,
-    machineModel: 'Línea Industrial Tortilla Harina 2,400 p/h',
-    closeProbability: 90,
-    expectedCloseDate: '2026-10-08',
-    lastFollowUp: '2026-10-02',
-    nextStep: 'Confirmar recepción de 50% de anticipo vía transferencia BBVA.',
-  },
-  {
-    id: 'opp_2',
-    companyOrClient: 'Taquerías y Burritos Los Primos',
-    contactName: 'Gonzalo Fuentes R.',
-    phone: '871 180 3341',
-    stage: 'en_negociacion',
-    dealValue: 125000,
-    machineModel: 'Prensa Automática Continua 30cm',
-    closeProbability: 70,
-    expectedCloseDate: '2026-10-15',
-    lastFollowUp: '2026-10-01',
-    nextStep: 'Agendar demostración virtual de calibración de espesor.',
-  },
-  {
-    id: 'opp_3',
-    companyOrClient: 'Tortillería Tradicional Tía Rosa',
-    contactName: 'Rosa Isela Peña',
-    phone: '639 472 9012',
-    stage: 'ficha_enviada',
-    dealValue: 88500,
-    machineModel: 'Rodillo Doble Grado Industrial Acero Inox',
-    closeProbability: 50,
-    expectedCloseDate: '2026-10-20',
-    lastFollowUp: '2026-09-29',
-    nextStep: 'Llamar para resolver dudas sobre instalación de gas LP en local.',
-  }
-];
-
-// Pruebas A/B en Vivo
+// Pruebas A/B en Vivo (se miden con sesiones reales)
 export const INITIAL_AB_TESTS: ABExperiment[] = [
   {
     id: 'exp_1',
-    title: 'Botón de Acción: WhatsApp Directo vs Carrito Cotizador',
-    description: 'Compara "Cotizar por WhatsApp Oficial" vs "Agregar al Carrito de Cotización"',
+    title: 'Botón de WhatsApp vs Carrito en Línea',
+    description: 'Compara si los clientes prefieren cerrar por WhatsApp o pagar en línea con Stripe',
     status: 'running',
     variantA: {
-      name: 'Variante A (WhatsApp Oficial)',
-      description: 'Abre chat oficial con mensaje predefinido del equipo técnico',
-      visitors: 840,
-      conversions: 79,
-      conversionRate: 9.4,
+      name: 'Variante A (Finalizar por WhatsApp)',
+      description: 'Envía el pedido estructurado con datos completos a WhatsApp',
+      visitors: 0,
+      conversions: 0,
+      conversionRate: 0,
     },
     variantB: {
-      name: 'Variante B (Carrito Multiequipo)',
-      description: 'Permite seleccionar máquina y accesorios antes de cotizar',
-      visitors: 820,
-      conversions: 104,
-      conversionRate: 12.7,
+      name: 'Variante B (Pagar en Línea con Stripe)',
+      description: 'Paga con tarjeta de crédito/débito y genera comprobante',
+      visitors: 0,
+      conversions: 0,
+      conversionRate: 0,
     },
-    startDate: '2026-09-15',
-    winningVariant: 'B',
-  },
-  {
-    id: 'exp_2',
-    title: 'Hero Principal: Rodillo 3D Interactivo vs Fotografía Real',
-    description: 'Mide engagement de clientes con el visualizador 3D interactivo vs foto real en taller',
-    status: 'running',
-    variantA: {
-      name: 'Variante A (Modelo 3D Interactivo)',
-      description: 'Permite girar el rodillo y ver componentes en 360 grados',
-      visitors: 610,
-      conversions: 48,
-      conversionRate: 7.8,
-    },
-    variantB: {
-      name: 'Variante B (Foto Real en Taller R2)',
-      description: 'Fotografía en acero inoxidable grado alimenticio con zoom',
-      visitors: 595,
-      conversions: 55,
-      conversionRate: 9.2,
-    },
-    startDate: '2026-09-20',
+    startDate: new Date().toISOString().split('T')[0],
     winningVariant: null,
   }
 ];
 
-// Puntos Calientes (Heatmap) en la Web de Maquinaria Rentería
+// Puntos Calientes (Heatmap) en la Web de Maquinaria Rentería (Se registran clics reales)
 export const INITIAL_CLICK_HOTSPOTS: ClickHotspot[] = [
-  { id: 'clk_1', elementName: 'Botón "Cotizar Maquinaria" (Hero)', section: 'Hero', clicksCount: 428, percentage: 31.4, category: 'CTA Principal' },
-  { id: 'clk_2', elementName: 'Botón Flotante WhatsApp Oficial (639 114 1084)', section: 'Botón Flotante', clicksCount: 382, percentage: 28.0, category: 'WhatsApp / Contacto' },
-  { id: 'clk_3', elementName: 'Ficha Técnica: Rodillo Doble Inox', section: 'Catálogo', clicksCount: 245, percentage: 18.0, category: 'Catálogo' },
-  { id: 'clk_4', elementName: 'Calculadora de ROI y Producción', section: 'Herramientas', clicksCount: 164, percentage: 12.0, category: 'Calculadora' },
-  { id: 'clk_5', elementName: 'Filtro: Máquinas para Tortillas de Harina', section: 'Catálogo', clicksCount: 144, percentage: 10.6, category: 'Catálogo' },
+  { id: 'clk_1', elementName: 'Botón WhatsApp Principal', section: 'Floating / Navbar', clicksCount: 0, percentage: 0, category: 'WhatsApp / Contacto' },
+  { id: 'clk_2', elementName: 'Cotizar por WhatsApp', section: 'Detalle de Máquina', clicksCount: 0, percentage: 0, category: 'Detalle Producto' },
+  { id: 'clk_3', elementName: 'Agregar al Carrito', section: 'Catálogo', clicksCount: 0, percentage: 0, category: 'Catálogo' },
+  { id: 'clk_4', elementName: 'Agendar Cita / Demostración', section: 'Navbar / Citas', clicksCount: 0, percentage: 0, category: 'CTA Principal' },
+  { id: 'clk_5', elementName: 'Pagar con Tarjeta (Stripe)', section: 'Carrito de Compras', clicksCount: 0, percentage: 0, category: 'CTA Principal' },
 ];
 
 export const INITIAL_USER_JOURNEYS: UserJourneyPath[] = [
-  { id: 'uj_1', path: 'Hero -> Catálogo -> Rodillo Inox -> WhatsApp', stepsCount: 4, sessionsCount: 312, percentage: 41.5, conversionRate: 18.2 },
-  { id: 'uj_2', path: 'Hero -> Calculadora ROI -> Formulario Contacto', stepsCount: 3, sessionsCount: 198, percentage: 26.4, conversionRate: 14.1 },
-  { id: 'uj_3', path: 'Sectores Taquerías -> Prensa Automática -> Cotizador', stepsCount: 3, sessionsCount: 142, percentage: 18.9, conversionRate: 11.3 },
-  { id: 'uj_4', path: 'Búsqueda Google -> Ficha Técnica -> WhatsApp', stepsCount: 3, sessionsCount: 99, percentage: 13.2, conversionRate: 21.0 },
+  { id: 'uj_1', path: 'Inicio -> Catálogo -> Máquina -> WhatsApp', stepsCount: 4, sessionsCount: 0, percentage: 0, conversionRate: 0 },
+  { id: 'uj_2', path: 'Inicio -> Agendar Cita -> Demostración en Planta', stepsCount: 3, sessionsCount: 0, percentage: 0, conversionRate: 0 },
+  { id: 'uj_3', path: 'Catálogo -> Carrito -> Pago en Línea (Stripe)', stepsCount: 3, sessionsCount: 0, percentage: 0, conversionRate: 0 },
 ];
 
 export const INITIAL_WEB_HEALTH: WebHealthMetrics = {
   cloudflareWorkerStatus: 'operativo',
   averageLatencyMs: 16,
   d1DatabaseStatus: 'conectada',
-  d1QueryTimeMs: 3.8,
+  d1QueryTimeMs: 3.5,
   r2StorageStatus: 'conectado',
-  r2LatencyMs: 22,
+  r2LatencyMs: 20,
   sslStatus: 'activo',
   sslExpiryDays: 90,
-  cacheHitRatio: 98.8,
-  uptimePercentage: 99.98,
-  lcp: 0.75,
-  fid: 10,
+  cacheHitRatio: 99.1,
+  uptimePercentage: 100,
+  lcp: 0.72,
+  fid: 12,
   cls: 0.01,
   lastAuditTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 };
 
-export const INITIAL_SECURITY_LOGS: SecurityAuditLog[] = [
-  {
-    id: 'sec_1',
-    timestamp: '2026-10-03 03:25:10',
-    ipAddress: '189.217.84.112',
-    location: 'Chihuahua, México',
-    action: 'Inicio de sesión exitoso',
-    status: 'Permitido',
-    deviceInfo: 'macOS Chrome 134',
-  },
-  {
-    id: 'sec_2',
-    timestamp: '2026-10-02 21:10:44',
-    ipAddress: '187.190.15.42',
-    location: 'Monterrey, México',
-    action: 'Inicio de sesión exitoso',
-    status: 'Permitido',
-    deviceInfo: 'Windows Edge',
-  },
-  {
-    id: 'sec_3',
-    timestamp: '2026-10-01 14:05:21',
-    ipAddress: '45.134.21.90',
-    location: 'Frankfurt, Alemania',
-    action: 'Intento fallido de login',
-    status: 'Bloqueado',
-    deviceInfo: 'Automated curl bot',
-  }
-];
+export const INITIAL_SECURITY_LOGS: SecurityAuditLog[] = [];
 
 export const INITIAL_SECURITY_SETTINGS: SecuritySettings = {
   underAttackMode: false,
   rateLimitingEnabled: true,
   adminPasswordConfiguredInCloudflare: true,
-  blockedIps: ['45.134.21.90'],
+  blockedIps: [],
   sessionTimeoutMinutes: 120,
 };
 
-// Ajustes Reales de Maquinaria Rentería
 export const INITIAL_SETTINGS_EXACT: AdminSettingsConfig = {
   reportEmail: 'maquinariarenteria17@gmail.com',
-  monthlySalesTarget: 250000, // $250,000 MXN mensuales
+  monthlySalesTarget: 250000,
   salesTargetCurrency: 'MXN',
   telegramBotEnabled: true,
   telegramBotUsername: '@MaquinariaRenteria_bot',
@@ -487,16 +188,19 @@ export const INITIAL_SETTINGS_EXACT: AdminSettingsConfig = {
   notifyNewQuotes: true,
   notifyAbandonedCarts: true,
   notifyAppointments: true,
-  storageUsedBytes: 216 * 1024,
+  storageUsedBytes: 150 * 1024,
   storageLimitBytes: 5 * 1024 * 1024 * 1024,
-  visitRecordsCount: 362,
-  lastTestDate: '2 oct · 03:05',
+  visitRecordsCount: 1,
+  lastTestDate: 'Hoy',
   emailStatus: 'ok',
   telegramStatus: 'ok',
   nextCleanupDate: 'El día 1 del próximo mes',
 };
 
-// Store getters and setters
+// ==========================================
+// STORE GETTERS & SETTERS
+// ==========================================
+
 export function getSiteConfig(): SiteConfig {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.CONFIG);
@@ -554,7 +258,9 @@ export function deleteStoredMachine(machineId: string): MachineProduct[] {
   return updated;
 }
 
-// 2. Cotizaciones
+// ------------------------------------------
+// 1. COTIZACIONES (Real quotes from web)
+// ------------------------------------------
 export function getStoredQuotes(): CustomerQuote[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.QUOTES);
@@ -573,6 +279,33 @@ export function saveStoredQuotes(quotes: CustomerQuote[]): void {
   window.dispatchEvent(new Event('mr_quotes_updated'));
 }
 
+export function addStoredQuote(quote: CustomerQuote): CustomerQuote[] {
+  const quotes = getStoredQuotes();
+  const updated = [quote, ...quotes];
+  saveStoredQuotes(updated);
+
+  // Automatically create a CRM opportunity for this real lead
+  if (quote.customerName) {
+    const opps = getStoredOpportunities();
+    const newOpp: Opportunity = {
+      id: `opp_${Date.now()}`,
+      companyOrClient: quote.customerName,
+      contactName: quote.customerName,
+      phone: quote.phone,
+      stage: 'contacto_inicial',
+      dealValue: quote.estimatedTotal || 50000,
+      machineModel: quote.items[0]?.name || 'Cotización de maquinaria',
+      closeProbability: 35,
+      expectedCloseDate: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
+      lastFollowUp: new Date().toISOString().split('T')[0],
+      nextStep: 'Responder por WhatsApp y enviar ficha técnica con precios.',
+    };
+    saveStoredOpportunities([newOpp, ...opps]);
+  }
+
+  return updated;
+}
+
 export function updateStoredQuoteStatus(quoteId: string, status: CustomerQuote['status'], notes?: string): CustomerQuote[] {
   const current = getStoredQuotes();
   const updated = current.map(q => q.id === quoteId ? { ...q, status, ...(notes !== undefined ? { notes } : {}) } : q);
@@ -580,66 +313,16 @@ export function updateStoredQuoteStatus(quoteId: string, status: CustomerQuote['
   return updated;
 }
 
-// Legacy Orders support
-export function saveStoredOrder(order: any): void {
-  const sales = getStoredSales();
-  const newSale: AdminSaleOrder = {
-    folio: order.folio,
-    createdAt: order.createdAt || new Date().toISOString(),
-    clientName: order.clientName,
-    clientPhone: order.clientPhone,
-    clientEmail: order.clientEmail || '',
-    shippingAddress: order.clientAddress || '',
-    shippingCity: '',
-    shippingState: '',
-    shippingZip: order.clientCP || '',
-    requiresInvoice: !!order.requiresFactura,
-    rfc: order.clientRFC,
-    businessName: order.clientRazonSocial,
-    items: (order.items || []).map((it: any) => ({
-      id: it.id || 'item',
-      name: it.name || 'Máquina',
-      sku: it.sku || 'SKU',
-      quantity: it.quantity || 1,
-      unitPrice: it.price || 0,
-      total: (it.price || 0) * (it.quantity || 1),
-    })),
-    subtotal: order.subtotal || 0,
-    iva: order.iva || 0,
-    shippingCost: order.shippingCost || 0,
-    total: order.total || 0,
-    paymentMethod: order.paymentMethod === 'card_stripe' ? 'Stripe' : 'Transferencia SPEI',
-    manufacturingStatus: 'Pendiente',
-  };
-  saveStoredSales([newSale, ...sales]);
-}
-
-// Legacy Inquiries support
-export function saveStoredInquiry(inquiry: { name: string; phone: string; message: string; email?: string }): void {
-  const quotes = getStoredQuotes();
-  const newQuote: CustomerQuote = {
-    id: `cot_${Date.now()}`,
-    folio: `COT-2026-${Math.floor(100 + Math.random() * 900)}`,
-    createdAt: new Date().toISOString(),
-    customerName: inquiry.name,
-    phone: inquiry.phone,
-    email: inquiry.email || '',
-    stateOrCity: 'Por confirmar',
-    businessType: 'Otro',
-    items: [],
-    estimatedTotal: 0,
-    status: 'Nueva',
-    priority: 'Media',
-    notes: inquiry.message,
-  };
-  saveStoredQuotes([newQuote, ...quotes]);
-}
-
-// 3. Citas
+// ------------------------------------------
+// 2. CITAS (Real appointments from web)
+// ------------------------------------------
 export function getStoredAppointments(): Appointment[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.APPOINTMENTS);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch (e) {
     console.error('Error loading appointments:', e);
   }
@@ -651,11 +334,30 @@ export function saveStoredAppointments(appointments: Appointment[]): void {
   window.dispatchEvent(new Event('mr_appointments_updated'));
 }
 
-// 4. Ventas
+export function addStoredAppointment(appointment: Appointment): Appointment[] {
+  const appointments = getStoredAppointments();
+  const updated = [appointment, ...appointments];
+  saveStoredAppointments(updated);
+  return updated;
+}
+
+export function updateStoredAppointmentStatus(id: string, status: Appointment['status'], notes?: string): Appointment[] {
+  const current = getStoredAppointments();
+  const updated = current.map(a => a.id === id ? { ...a, status, ...(notes !== undefined ? { notes } : {}) } : a);
+  saveStoredAppointments(updated);
+  return updated;
+}
+
+// ------------------------------------------
+// 3. VENTAS (Real sales from web / Stripe / WhatsApp)
+// ------------------------------------------
 export function getStoredSales(): AdminSaleOrder[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.SALES);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch (e) {
     console.error('Error loading sales:', e);
   }
@@ -667,34 +369,57 @@ export function saveStoredSales(sales: AdminSaleOrder[]): void {
   window.dispatchEvent(new Event('mr_sales_updated'));
 }
 
-export function updateSaleStatus(folio: string, manufacturingStatus: AdminSaleOrder['manufacturingStatus']): AdminSaleOrder[] {
+export function addStoredSale(sale: AdminSaleOrder): AdminSaleOrder[] {
   const sales = getStoredSales();
-  const updated = sales.map(s => s.folio === folio ? { ...s, manufacturingStatus } : s);
+  const updated = [sale, ...sales];
+  saveStoredSales(updated);
+
+  // If sale was made, mark or add as won in CRM
+  const opps = getStoredOpportunities();
+  const existingOpp = opps.find(o => o.phone === sale.clientPhone);
+  if (existingOpp) {
+    saveStoredOpportunities(opps.map(o => o.id === existingOpp.id ? { ...o, stage: 'ganada', closeProbability: 100 } : o));
+  } else {
+    const newWonOpp: Opportunity = {
+      id: `opp_won_${Date.now()}`,
+      companyOrClient: sale.clientName,
+      contactName: sale.clientName,
+      phone: sale.clientPhone,
+      stage: 'ganada',
+      dealValue: sale.total,
+      machineModel: sale.items[0]?.name || 'Maquinaria de tortillería',
+      closeProbability: 100,
+      expectedCloseDate: new Date().toISOString().split('T')[0],
+      lastFollowUp: new Date().toISOString().split('T')[0],
+      nextStep: 'Coordinar flete y entrega con el cliente.',
+    };
+    saveStoredOpportunities([newWonOpp, ...opps]);
+  }
+
+  return updated;
+}
+
+export function updateSaleStatus(folio: string, manufacturingStatus: AdminSaleOrder['manufacturingStatus'], trackingNumber?: string): AdminSaleOrder[] {
+  const sales = getStoredSales();
+  const updated = sales.map(s => s.folio === folio ? { 
+    ...s, 
+    manufacturingStatus, 
+    ...(trackingNumber ? { trackingNumber } : {}) 
+  } : s);
   saveStoredSales(updated);
   return updated;
 }
 
-// 5. Cupones
-export function getStoredCoupons(): Coupon[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEYS.COUPONS);
-    if (saved) return JSON.parse(saved);
-  } catch (e) {
-    console.error('Error loading coupons:', e);
-  }
-  return INITIAL_COUPONS;
-}
-
-export function saveStoredCoupons(coupons: Coupon[]): void {
-  localStorage.setItem(STORAGE_KEYS.COUPONS, JSON.stringify(coupons));
-  window.dispatchEvent(new Event('mr_coupons_updated'));
-}
-
-// 6. Oportunidades
+// ------------------------------------------
+// 4. OPORTUNIDADES (CRM)
+// ------------------------------------------
 export function getStoredOpportunities(): Opportunity[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.OPPORTUNITIES);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch (e) {
     console.error('Error loading opportunities:', e);
   }
@@ -706,7 +431,9 @@ export function saveStoredOpportunities(opps: Opportunity[]): void {
   window.dispatchEvent(new Event('mr_opps_updated'));
 }
 
-// 7. Pruebas A/B
+// ------------------------------------------
+// 5. PRUEBAS A/B
+// ------------------------------------------
 export function getStoredABTests(): ABExperiment[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.AB_TESTS);
@@ -722,7 +449,9 @@ export function saveStoredABTests(tests: ABExperiment[]): void {
   window.dispatchEvent(new Event('mr_ab_updated'));
 }
 
-// 8. Clics
+// ------------------------------------------
+// 6. CLICS Y HEATMAP (Live Click Tracking)
+// ------------------------------------------
 export function getStoredHotspots(): ClickHotspot[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.CLICKS);
@@ -733,7 +462,55 @@ export function getStoredHotspots(): ClickHotspot[] {
   return INITIAL_CLICK_HOTSPOTS;
 }
 
-// 9. Precios y Ofertas
+export function saveStoredHotspots(hotspots: ClickHotspot[]): void {
+  localStorage.setItem(STORAGE_KEYS.CLICKS, JSON.stringify(hotspots));
+  window.dispatchEvent(new Event('mr_clicks_updated'));
+}
+
+export function recordHotspotClick(elementName: string): void {
+  try {
+    const current = getStoredHotspots();
+    let found = false;
+    let totalClicks = 0;
+
+    const incremented = current.map(item => {
+      if (item.elementName.toLowerCase().includes(elementName.toLowerCase()) || elementName.toLowerCase().includes(item.elementName.toLowerCase())) {
+        found = true;
+        const newCount = item.clicksCount + 1;
+        totalClicks += newCount;
+        return { ...item, clicksCount: newCount };
+      }
+      totalClicks += item.clicksCount;
+      return item;
+    });
+
+    if (!found) {
+      incremented.push({
+        id: `spot_${Date.now()}`,
+        elementName,
+        section: 'Web',
+        clicksCount: 1,
+        percentage: 100,
+        category: 'CTA Principal',
+      });
+      totalClicks += 1;
+    }
+
+    // Recalculate percentages
+    const finalSpots = incremented.map(item => ({
+      ...item,
+      percentage: totalClicks > 0 ? Number(((item.clicksCount / totalClicks) * 100).toFixed(1)) : 0,
+    }));
+
+    saveStoredHotspots(finalSpots);
+  } catch (err) {
+    console.warn('Error recording click hotspot:', err);
+  }
+}
+
+// ------------------------------------------
+// 7. PRECIOS Y OFERTAS
+// ------------------------------------------
 export function getStoredPriceOffers(): PriceOfferItem[] {
   const machines = getStoredMachines();
   try {
@@ -750,7 +527,7 @@ export function getStoredPriceOffers(): PriceOfferItem[] {
     regularPriceUSD: m.priceUSD,
     offerPriceUSD: Math.round(m.priceUSD * 0.95),
     isOfferActive: false,
-    offerTag: '5% Descuento Pago de Contado',
+    offerTag: 'Envío por coordinar',
     minDepositPercentage: 50,
   }));
 }
@@ -760,7 +537,9 @@ export function saveStoredPriceOffers(offers: PriceOfferItem[]): void {
   window.dispatchEvent(new Event('mr_offers_updated'));
 }
 
-// 10. Salud de la Web
+// ------------------------------------------
+// 8. SALUD DE LA WEB
+// ------------------------------------------
 export function getStoredWebHealth(): WebHealthMetrics {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.HEALTH);
@@ -771,7 +550,9 @@ export function getStoredWebHealth(): WebHealthMetrics {
   return INITIAL_WEB_HEALTH;
 }
 
-// 11. Seguridad
+// ------------------------------------------
+// 9. SEGURIDAD Y AUDITORÍA
+// ------------------------------------------
 export function getStoredSecurityLogs(): SecurityAuditLog[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.SECURITY);
@@ -786,7 +567,30 @@ export function saveStoredSecurityLogs(logs: SecurityAuditLog[]): void {
   localStorage.setItem(STORAGE_KEYS.SECURITY, JSON.stringify(logs));
 }
 
-// 12. Ajustes (Exacto a Maquinaria Rentería)
+export function recordSecurityAudit(
+  action: SecurityAuditLog['action'], 
+  status: SecurityAuditLog['status']
+): void {
+  try {
+    const logs = getStoredSecurityLogs();
+    const newLog: SecurityAuditLog = {
+      id: `sec_${Date.now()}`,
+      timestamp: new Date().toLocaleString('es-MX'),
+      ipAddress: '127.0.0.1 (Navegador actual)',
+      location: 'México',
+      action,
+      status,
+      deviceInfo: typeof navigator !== 'undefined' ? `${navigator.platform} - ${navigator.userAgent.slice(0, 30)}` : 'Web Client',
+    };
+    saveStoredSecurityLogs([newLog, ...logs].slice(0, 50));
+  } catch (err) {
+    console.warn('Error recording security audit:', err);
+  }
+}
+
+// ------------------------------------------
+// 10. AJUSTES
+// ------------------------------------------
 export function getStoredSettings(): AdminSettingsConfig {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
@@ -805,7 +609,9 @@ export function saveStoredSettings(settings: Partial<AdminSettingsConfig>): Admi
   return updated;
 }
 
-// Auth helpers
+// ------------------------------------------
+// 11. AUTENTICACIÓN
+// ------------------------------------------
 export function isAdminAuthenticated(): boolean {
   try {
     const isAuth = localStorage.getItem(STORAGE_KEYS.AUTH);
@@ -819,6 +625,7 @@ export function setAdminAuthenticated(auth: boolean, token?: string): void {
   if (auth) {
     localStorage.setItem(STORAGE_KEYS.AUTH, 'true');
     if (token) localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+    recordSecurityAudit('Inicio de sesión exitoso', 'Permitido');
   } else {
     localStorage.removeItem(STORAGE_KEYS.AUTH);
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
@@ -830,15 +637,19 @@ export function getAdminToken(): string | null {
   return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 }
 
-// Site visit analytics recorder
+// ------------------------------------------
+// 12. ANALÍTICAS DE VISITAS
+// ------------------------------------------
 export function recordSiteVisit(): void {
-  const hasVisitedSession = sessionStorage.getItem('mr_session_visited');
-  if (!hasVisitedSession) {
-    sessionStorage.setItem('mr_session_visited', 'true');
-    const settings = getStoredSettings();
-    saveStoredSettings({
-      visitRecordsCount: settings.visitRecordsCount + 1,
-      storageUsedBytes: settings.storageUsedBytes + 420,
-    });
-  }
+  try {
+    const hasVisitedSession = sessionStorage.getItem('mr_session_visited');
+    if (!hasVisitedSession) {
+      sessionStorage.setItem('mr_session_visited', 'true');
+      const settings = getStoredSettings();
+      saveStoredSettings({
+        visitRecordsCount: (settings.visitRecordsCount || 0) + 1,
+        storageUsedBytes: (settings.storageUsedBytes || 1000) + 420,
+      });
+    }
+  } catch {}
 }
