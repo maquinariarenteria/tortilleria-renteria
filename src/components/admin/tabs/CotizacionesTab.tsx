@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CustomerQuote } from '../../../types/admin';
-import { getStoredQuotes, updateStoredQuoteStatus } from '../../../utils/adminStore';
-import { Search, Phone, MapPin, X, Edit3, MessageSquare } from 'lucide-react';
+import { getStoredQuotes, updateStoredQuoteStatus, deleteStoredQuote } from '../../../utils/adminStore';
+import { Search, Phone, MapPin, X, Edit3, MessageSquare, Trash2 } from 'lucide-react';
 
 export const CotizacionesTab: React.FC = () => {
   const [quotes, setQuotes] = useState<CustomerQuote[]>(getStoredQuotes());
@@ -41,6 +41,16 @@ export const CotizacionesTab: React.FC = () => {
     const updated = updateStoredQuoteStatus(selectedQuote.id, editStatus, editNotes);
     setQuotes(updated);
     setSelectedQuote(null);
+  };
+
+  const handleDeleteQuote = (id: string, folio: string) => {
+    if (window.confirm(`¿Deseas eliminar la cotización ${folio} de Cloudflare para liberar espacio?`)) {
+      const updated = deleteStoredQuote(id);
+      setQuotes(updated);
+      if (selectedQuote?.id === id) {
+        setSelectedQuote(null);
+      }
+    }
   };
 
   return (
@@ -174,6 +184,15 @@ export const CotizacionesTab: React.FC = () => {
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Detalle</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteQuote(quote.id, quote.folio)}
+                    title="Eliminar de Cloudflare para liberar espacio"
+                    className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -233,20 +252,31 @@ export const CotizacionesTab: React.FC = () => {
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setSelectedQuote(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleDeleteQuote(selectedQuote.id, selectedQuote.folio)}
+                  className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5 cursor-pointer border border-rose-200 transition-colors"
                 >
-                  Cancelar
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Eliminar de Cloudflare</span>
                 </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold uppercase tracking-wider shadow-md shadow-blue-500/20 cursor-pointer"
-                >
-                  Guardar Cambios
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedQuote(null)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold uppercase tracking-wider cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold uppercase tracking-wider shadow-md shadow-blue-500/20 cursor-pointer"
+                  >
+                    Guardar Cambios
+                  </button>
+                </div>
               </div>
             </form>
           </div>

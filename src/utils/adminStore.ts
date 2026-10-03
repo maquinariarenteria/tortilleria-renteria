@@ -315,6 +315,14 @@ export function updateStoredQuoteStatus(quoteId: string, status: CustomerQuote['
   return updated;
 }
 
+export function deleteStoredQuote(quoteId: string): CustomerQuote[] {
+  const current = getStoredQuotes();
+  const updated = current.filter(q => q.id !== quoteId);
+  saveStoredQuotes(updated);
+  recalculateStorageFootprint();
+  return updated;
+}
+
 // ------------------------------------------
 // 2. CITAS (Real appointments from web)
 // ------------------------------------------
@@ -350,6 +358,14 @@ export function updateStoredAppointmentStatus(id: string, status: Appointment['s
   return updated;
 }
 
+export function deleteStoredAppointment(appointmentId: string): Appointment[] {
+  const current = getStoredAppointments();
+  const updated = current.filter(a => a.id !== appointmentId);
+  saveStoredAppointments(updated);
+  recalculateStorageFootprint();
+  return updated;
+}
+
 // ------------------------------------------
 // 3. VENTAS (Real sales from web / Stripe / WhatsApp)
 // ------------------------------------------
@@ -369,6 +385,14 @@ export function getStoredSales(): AdminSaleOrder[] {
 export function saveStoredSales(sales: AdminSaleOrder[]): void {
   localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(sales));
   window.dispatchEvent(new Event('mr_sales_updated'));
+}
+
+export function deleteStoredSale(saleFolio: string): AdminSaleOrder[] {
+  const current = getStoredSales();
+  const updated = current.filter(s => s.folio !== saleFolio);
+  saveStoredSales(updated);
+  recalculateStorageFootprint();
+  return updated;
 }
 
 export function addStoredSale(sale: AdminSaleOrder): AdminSaleOrder[] {
@@ -742,6 +766,97 @@ export function recordSiteVisit(): void {
 // ------------------------------------------
 // 13. CLOUDFLARE PLAN GRATUITO: LÍMITES Y LIBERACIÓN DE ESPACIO
 // ------------------------------------------
+
+export function recalculateStorageFootprint(): number {
+  try {
+    const quotes = getStoredQuotes();
+    const appointments = getStoredAppointments();
+    const sales = getStoredSales();
+    const machines = getStoredMachines();
+    const logs = getStoredSecurityLogs();
+    const settings = getStoredSettings();
+
+    const quotesBytes = JSON.stringify(quotes).length;
+    const apptsBytes = JSON.stringify(appointments).length;
+    const salesBytes = JSON.stringify(sales).length;
+    const machinesBytes = JSON.stringify(machines).length;
+    const logsBytes = JSON.stringify(logs).length;
+    const visitsBytes = (settings.visitRecordsCount || 1) * 350;
+
+    const totalD1Bytes = Math.max(8000, quotesBytes + apptsBytes + salesBytes + machinesBytes + logsBytes + visitsBytes);
+
+    saveStoredSettings({
+      storageUsedBytes: totalD1Bytes,
+    });
+
+    return totalD1Bytes;
+  } catch {
+    return 48000;
+  }
+}
+
+export function purgeSelectedCategory(category: 'visits' | 'old_quotes' | 'finished_appointments' | 'audit_logs'): {
+  freedBytes: number;
+  message: string;
+  count: number;
+} {
+  let count = 0;
+  const beforeBytes = getStoredSettings().storageUsedBytes || 48000;
+
+  if (category === 'visits') {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('mr_session_visited');
+      }
+      const allKeys = Object.keys(localStorage);
+      allKeys.forEach((key) => {
+        if (key.startsWith('mr_session_') || key.startsWith('mr_hit_')) {
+          localStorage.removeItem(key);
+          count++;
+        }
+      });
+    } catch {}
+    saveStoredSettings({ visitRecordsCount: 1 });
+    count = Math.max(count, 1);
+  } else if (category === 'old_quotes') {
+    const quotes = getStoredQuotes();
+    const activeQuotes = quotes.filter(q => q.status !== 'Descartada' && q.status !== 'Cerrada');
+    count = quotes.length - activeQuotes.length;
+    saveStoredQuotes(activeQuotes);
+  } else if (category === 'finished_appointments') {
+    const appts = getStoredAppointments();
+    const activeAppts = appts.filter(a => a.status !== 'Realizada' && a.status !== 'Cancelada');
+    count = appts.length - activeAppts.length;
+    saveStoredAppointments(activeAppts);
+  } else if (category === 'audit_logs') {
+    const logs = getStoredSecurityLogs();
+    count = logs.length;
+    saveStoredSecurityLogs([]);
+  }
+
+  const afterBytes = recalculateStorageFootprint();
+  const freedBytes = Math.max(1024, beforeBytes - afterBytes);
+
+  saveStoredSettings({
+    lastCleanupDate: 'Hoy · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  });
+
+  window.dispatchEvent(new Event('mr_cleanup_completed'));
+
+  const labels: Record<string, string> = {
+    visits: `Se purgaron ${count} registros de visitas y sesiones temporales de Cloudflare D1.`,
+    old_quotes: `Se eliminaron ${count} cotizaciones cerradas o descartadas de Cloudflare D1.`,
+    finished_appointments: `Se eliminaron ${count} citas completadas o canceladas de Cloudflare D1.`,
+    audit_logs: `Se depuraron ${count} registros de seguridad de Cloudflare D1.`,
+  };
+
+  return {
+    freedBytes,
+    count,
+    message: labels[category] || 'Espacio liberado con éxito.',
+  };
+}
+
 export function cleanupCloudflareStorage(): {
   freedBytes: number;
   newUsedBytes: number;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Appointment } from '../../../types/admin';
-import { getStoredAppointments, saveStoredAppointments } from '../../../utils/adminStore';
-import { Calendar, Clock, MapPin, Video, Phone, CheckCircle2, Plus, X, User } from 'lucide-react';
+import { getStoredAppointments, saveStoredAppointments, deleteStoredAppointment } from '../../../utils/adminStore';
+import { Calendar, Clock, MapPin, Video, Phone, CheckCircle2, Plus, X, User, Trash2 } from 'lucide-react';
 
 export const CitasTab: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>(getStoredAppointments());
@@ -59,6 +59,13 @@ export const CitasTab: React.FC = () => {
     const updated = appointments.map(a => a.id === id ? { ...a, status: newStatus } : a);
     saveStoredAppointments(updated);
     setAppointments(updated);
+  };
+
+  const handleDeleteAppointment = (id: string, name: string) => {
+    if (window.confirm(`¿Deseas eliminar la cita de "${name}" de Cloudflare para liberar espacio?`)) {
+      const updated = deleteStoredAppointment(id);
+      setAppointments(updated);
+    }
   };
 
   return (
@@ -166,6 +173,15 @@ export const CitasTab: React.FC = () => {
                 >
                   WhatsApp
                 </a>
+
+                <button
+                  type="button"
+                  onClick={() => handleDeleteAppointment(apt.id, apt.customerName)}
+                  title="Eliminar de Cloudflare para liberar espacio"
+                  className="p-1 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminSettingsConfig, CloudflareResourceLimit } from '../../../types/admin';
 import { 
   getStoredSettings, 
@@ -6,13 +6,18 @@ import {
   getSiteConfig, 
   saveSiteConfig,
   getCloudflareLimitsReport,
-  cleanupCloudflareStorage
+  cleanupCloudflareStorage,
+  purgeSelectedCategory,
+  getStoredQuotes,
+  getStoredAppointments,
+  getStoredSecurityLogs
 } from '../../../utils/adminStore';
 import { AdminService, CLOUDFLARE_CONFIG_INFO } from '../../../services/adminService';
 import { 
   Send, Download, Check, AlertTriangle, 
   Database, HardDrive, KeyRound, Cloud, Sparkles, Store, Save,
-  Trash2, ShieldCheck, Mail, Zap, RefreshCw, Info, ChevronDown, ChevronUp
+  Trash2, ShieldCheck, Mail, Zap, RefreshCw, Info, ChevronDown, ChevronUp,
+  HelpCircle, Calendar, FileText, Activity
 } from 'lucide-react';
 
 export const AjustesTab: React.FC = () => {
@@ -23,10 +28,41 @@ export const AjustesTab: React.FC = () => {
   const [salesTargetInput, setSalesTargetInput] = useState(settings.monthlySalesTarget.toString());
   const [alertThreshold, setAlertThreshold] = useState<number>(settings.alertThresholdPercent || 80);
   const [isCloudflareAccordionOpen, setIsCloudflareAccordionOpen] = useState(true);
+  const [isExplainerOpen, setIsExplainerOpen] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [isCleaningStorage, setIsCleaningStorage] = useState(false);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [limitsReport, setLimitsReport] = useState<CloudflareResourceLimit[]>(getCloudflareLimitsReport());
+
+  // Conteos para eliminación granular
+  const [inactiveQuotesCount, setInactiveQuotesCount] = useState(0);
+  const [finishedApptsCount, setFinishedApptsCount] = useState(0);
+  const [securityLogsCount, setSecurityLogsCount] = useState(0);
+
+  const refreshCounts = () => {
+    const quotes = getStoredQuotes();
+    setInactiveQuotesCount(quotes.filter(q => q.status === 'Descartada' || q.status === 'Cerrada').length);
+    const appts = getStoredAppointments();
+    setFinishedApptsCount(appts.filter(a => a.status === 'Realizada' || a.status === 'Cancelada').length);
+    setSecurityLogsCount(getStoredSecurityLogs().length);
+  };
+
+  useEffect(() => {
+    refreshCounts();
+    const handleSync = () => {
+      refreshCounts();
+      setSettings(getStoredSettings());
+      setLimitsReport(getCloudflareLimitsReport());
+    };
+    window.addEventListener('mr_cleanup_completed', handleSync);
+    window.addEventListener('mr_quotes_updated', handleSync);
+    window.addEventListener('mr_appointments_updated', handleSync);
+    return () => {
+      window.removeEventListener('mr_cleanup_completed', handleSync);
+      window.removeEventListener('mr_quotes_updated', handleSync);
+      window.removeEventListener('mr_appointments_updated', handleSync);
+    };
+  }, []);
 
   const showNotice = (msg: string) => {
     setActionNotice(msg);
@@ -72,23 +108,40 @@ export const AjustesTab: React.FC = () => {
     }, 500);
   };
 
-  // Liberar espacio en Cloudflare (purga de registros temporales)
+  // Liberar todo el espacio temporal en Cloudflare
   const handleCleanupSpace = async () => {
     setIsCleaningStorage(true);
     try {
-      // 1. Limpieza en Cloudflare Worker / D1
       await AdminService.cleanupCloudflareD1();
-      // 2. Limpieza local en Store
       const result = cleanupCloudflareStorage();
       
       const newSettings = getStoredSettings();
       setSettings(newSettings);
       setLimitsReport(getCloudflareLimitsReport());
+      refreshCounts();
       showNotice(result.message);
     } catch {
       showNotice('Proceso de liberación completado. Espacio optimizado.');
     } finally {
       setIsCleaningStorage(false);
+    }
+  };
+
+  // Eliminación selectiva / granular por categoría
+  const handlePurgeCategory = (category: 'visits' | 'old_quotes' | 'finished_appointments' | 'audit_logs') => {
+    const titles: Record<string, string> = {
+      visits: '¿Deseas purgar los registros de visitas y sesiones temporales de Cloudflare D1?',
+      old_quotes: `¿Deseas eliminar las ${inactiveQuotesCount} cotizaciones cerradas o descartadas de Cloudflare D1?`,
+      finished_appointments: `¿Deseas eliminar las ${finishedApptsCount} citas realizadas o canceladas de Cloudflare D1?`,
+      audit_logs: `¿Deseas vaciar los ${securityLogsCount} registros de auditoría de seguridad?`,
+    };
+
+    if (window.confirm(titles[category])) {
+      const res = purgeSelectedCategory(category);
+      setSettings(getStoredSettings());
+      setLimitsReport(getCloudflareLimitsReport());
+      refreshCounts();
+      showNotice(res.message);
     }
   };
 
@@ -120,7 +173,6 @@ export const AjustesTab: React.FC = () => {
     setTimeout(() => setConfigSuccess(false), 3000);
   };
 
-  // Comprobar si algún recurso supera el umbral de alerta
   const hasCapacityWarning = limitsReport.some(
     (item) => item.usagePercent >= alertThreshold
   );
@@ -151,7 +203,7 @@ export const AjustesTab: React.FC = () => {
               <div>
                 <h4 className="font-bold text-xs uppercase tracking-wider">Aviso de Capacidad Cloudflare Próxima al Límite</h4>
                 <p className="text-[11px] text-amber-800">
-                  Uno o más recursos han superado el umbral configurado ({alertThreshold}%). Utiliza el botón de liberar espacio para depurar registros temporales sin tocar cotizaciones ni catálogo.
+                  Uno o más recursos han superado el umbral configurado ({alertThreshold}%). Utiliza el botón de liberar espacio o las opciones de eliminación abajo para reducir el uso sin tocar cotizaciones ni catálogo.
                 </p>
               </div>
             </div>
@@ -193,7 +245,7 @@ export const AjustesTab: React.FC = () => {
               <span>Límites Oficiales del Plan Gratuito de Cloudflare</span>
             </h2>
             <p className="text-xs text-slate-600 mt-1">
-              Todos los límites indicados abajo corresponden a las cuotas reales oficiales de Cloudflare Free Tier. Nunca se te cobrará nada mientras operes en estos rangos.
+              Todos los límites indicados corresponden a las cuotas reales oficiales de Cloudflare Free Tier. Puedes eliminar elementos selectivamente para mantenerte siempre holgado.
             </p>
           </div>
 
@@ -217,7 +269,7 @@ export const AjustesTab: React.FC = () => {
               ))}
             </div>
 
-            {/* Botón Principal para Liberar Espacio */}
+            {/* Botón Principal para Liberar Espacio Rápido */}
             <button
               type="button"
               onClick={handleCleanupSpace}
@@ -229,7 +281,7 @@ export const AjustesTab: React.FC = () => {
               ) : (
                 <Trash2 className="w-3.5 h-3.5" />
               )}
-              <span>{isCleaningStorage ? 'Liberando...' : 'Liberar Espacio'}</span>
+              <span>{isCleaningStorage ? 'Liberando...' : 'Liberar Espacio Rápido'}</span>
             </button>
           </div>
         </div>
@@ -258,7 +310,6 @@ export const AjustesTab: React.FC = () => {
                   {((settings.storageUsedBytes || 45000) / 1024).toFixed(1)} KB / 5 GB
                 </span>
               </div>
-              {/* Barra de Progreso */}
               <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                 <div 
                   className="bg-[#2563eb] h-full rounded-full transition-all duration-500"
@@ -294,7 +345,6 @@ export const AjustesTab: React.FC = () => {
                   ~12.5 MB / 10 GB
                 </span>
               </div>
-              {/* Barra de Progreso */}
               <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                 <div 
                   className="bg-emerald-600 h-full rounded-full transition-all duration-500"
@@ -330,7 +380,6 @@ export const AjustesTab: React.FC = () => {
                   {settings.dailyRequestsUsed || 28} / 100,000 req
                 </span>
               </div>
-              {/* Barra de Progreso */}
               <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                 <div 
                   className="bg-blue-600 h-full rounded-full transition-all duration-500"
@@ -366,7 +415,6 @@ export const AjustesTab: React.FC = () => {
                   {settings.reportEmail || 'maquinariarenteria17@gmail.com'}
                 </span>
               </div>
-              {/* Indicador de Estado */}
               <div className="flex items-center gap-1 text-[11px] text-emerald-700 font-bold">
                 <Check className="w-3.5 h-3.5" /> Reenvío Activo y Gratuito
               </div>
@@ -399,7 +447,6 @@ export const AjustesTab: React.FC = () => {
                   9 / 500 al mes
                 </span>
               </div>
-              {/* Barra de Progreso */}
               <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                 <div 
                   className="bg-purple-600 h-full rounded-full transition-all duration-500"
@@ -439,11 +486,167 @@ export const AjustesTab: React.FC = () => {
               </div>
             </div>
             <div className="pt-2 border-t border-slate-200 text-[10px] text-slate-500">
-              Presiona "Liberar Espacio" arriba para limpiar logs de navegación y liberar memoria D1 al instante.
+              Puedes eliminar elementos individuales o purgar categorías abajo para liberar espacio exacto.
             </div>
           </div>
 
         </div>
+
+        {/* ======================================================== */}
+        {/* SUBSECCIÓN: ELIMINACIÓN SELECTIVA DE COSAS PARA LIBERAR   */}
+        {/* ======================================================== */}
+        <div className="border border-slate-200 bg-slate-50/70 rounded-xl p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <Trash2 className="w-4 h-4 text-rose-600" />
+            <h3 className="font-black text-xs uppercase tracking-wider text-slate-900">
+              Eliminar Cosas para Liberar Espacio en Cloudflare (D1 y R2)
+            </h3>
+          </div>
+          <p className="text-xs text-slate-600 font-medium">
+            Aquí puedes eliminar datos innecesarios de forma selectiva. También puedes eliminar cotizaciones individuales en la pestaña <b>Cotizaciones</b> y citas en la pestaña <b>Citas</b>.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            
+            {/* Opción 1: Visitas temporales */}
+            <div className="bg-white border border-slate-200 p-3.5 rounded-xl space-y-2 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1.5 text-slate-900 font-bold">
+                  <Activity className="w-3.5 h-3.5 text-[#2563eb]" />
+                  <span>Visitas y Telemetría</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Registros de navegación y sesiones guardadas en D1.
+                </p>
+                <div className="text-xs font-mono font-bold text-slate-900 mt-1">
+                  {settings.visitRecordsCount || 1} registros temporales
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handlePurgeCategory('visits')}
+                className="w-full bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 font-bold uppercase tracking-wider text-[10px] py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3 h-3 text-rose-500" />
+                <span>Purgar Visitas</span>
+              </button>
+            </div>
+
+            {/* Opción 2: Cotizaciones Inactivas */}
+            <div className="bg-white border border-slate-200 p-3.5 rounded-xl space-y-2 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1.5 text-slate-900 font-bold">
+                  <FileText className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Cotizaciones Inactivas</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Cotizaciones marcadas como "Cerrada" o "Descartada".
+                </p>
+                <div className="text-xs font-mono font-bold text-slate-900 mt-1">
+                  {inactiveQuotesCount} inactivas / {getStoredQuotes().length} total
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={inactiveQuotesCount === 0}
+                onClick={() => handlePurgeCategory('old_quotes')}
+                className="w-full bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 font-bold uppercase tracking-wider text-[10px] py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="w-3 h-3 text-rose-500" />
+                <span>Eliminar Inactivas</span>
+              </button>
+            </div>
+
+            {/* Opción 3: Citas Pasadas */}
+            <div className="bg-white border border-slate-200 p-3.5 rounded-xl space-y-2 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1.5 text-slate-900 font-bold">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Citas Pasadas</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Demostraciones marcadas como "Realizada" o "Cancelada".
+                </p>
+                <div className="text-xs font-mono font-bold text-slate-900 mt-1">
+                  {finishedApptsCount} finalizadas / {getStoredAppointments().length} total
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={finishedApptsCount === 0}
+                onClick={() => handlePurgeCategory('finished_appointments')}
+                className="w-full bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 font-bold uppercase tracking-wider text-[10px] py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="w-3 h-3 text-rose-500" />
+                <span>Eliminar Pasadas</span>
+              </button>
+            </div>
+
+            {/* Opción 4: Logs de Auditoría */}
+            <div className="bg-white border border-slate-200 p-3.5 rounded-xl space-y-2 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1.5 text-slate-900 font-bold">
+                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Logs de Seguridad</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Historial de accesos y eventos de seguridad en D1.
+                </p>
+                <div className="text-xs font-mono font-bold text-slate-900 mt-1">
+                  {securityLogsCount} eventos registrados
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={securityLogsCount === 0}
+                onClick={() => handlePurgeCategory('audit_logs')}
+                className="w-full bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 font-bold uppercase tracking-wider text-[10px] py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="w-3 h-3 text-rose-500" />
+                <span>Limpiar Auditoría</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        {/* ======================================================== */}
+        {/* SUBSECCIÓN: ¿POR QUÉ CLOUDFLARE DA CUOTAS TAN AMPLIAS?   */}
+        {/* ======================================================== */}
+        <div className="border border-blue-200 bg-blue-50/60 rounded-xl p-4 text-xs">
+          <button
+            type="button"
+            onClick={() => setIsExplainerOpen(!isExplainerOpen)}
+            className="w-full flex items-center justify-between text-left font-bold uppercase tracking-wide text-blue-950 cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <HelpCircle className="w-4 h-4 text-[#2563eb]" />
+              <span>¿Por qué Cloudflare ofrece cuotas tan amplias gratis? (Explicación oficial)</span>
+            </span>
+            {isExplainerOpen ? <ChevronUp className="w-4 h-4 text-[#2563eb]" /> : <ChevronDown className="w-4 h-4 text-[#2563eb]" />}
+          </button>
+
+          {isExplainerOpen && (
+            <div className="mt-3 pt-3 border-t border-blue-200 text-slate-700 space-y-2.5 text-[11px] leading-relaxed font-medium">
+              <p>
+                <b>1. Infraestructura masiva mundial (Costo marginal casi cero):</b> Cloudflare gestiona más del 20% de todo el tráfico de internet del mundo en 330+ ciudades. Sus servidores y centros de datos ya están operando las 24 horas para clientes millonarios como Shopify o Discord. Darte 10 GB de fotos y 5 GB de datos para Maquinaria Rentería a ellos les cuesta fracciones de centavo.
+              </p>
+              <p>
+                <b>2. Guerra contra Amazon (AWS) y Google Cloud ($0.00 Egress):</b> Amazon AWS te cobra por cada giga que la gente descarga de tus fotos. Cloudflare creó R2 con $0.00 de tarifa de salida precisamente para ganarle clientes a Amazon y convertirse en el estándar de la nube moderna.
+              </p>
+              <p>
+                <b>3. Modelo Freemium (Conversión a futuro):</b> De cada 10,000 negocios que inician en el plan gratuito, algunos crecerán hasta convertirse en gigantes multinacionales que pagarán miles de dólares al mes en planes Enterprise. Les conviene que crezcas con ellos.
+              </p>
+              <p>
+                <b>4. Inteligencia de seguridad colectiva:</b> Al tener millones de sitios conectados en su red, Cloudflare detecta virus, bots y ataques DDoS al instante en cualquier parte del planeta, fortaleciendo la seguridad de todos sus usuarios.
+              </p>
+              <p>
+                <b>5. El texto y fotos de maquinaria ocupan muy poco:</b> Para una empresa que maneja Petabytes de datos diarios, 5 GB de puro texto (millones de cotizaciones) y 10 GB de fotos web representan un consumo mínimo.
+              </p>
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* ======================================================== */}
