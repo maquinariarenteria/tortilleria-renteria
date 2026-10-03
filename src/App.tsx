@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MachineProduct, CartItem, ProductVariant } from './types';
-import { getStoredMachines, recordSiteVisit } from './utils/adminStore';
+import { getStoredMachines, recordSiteVisit, recordHotspotClick } from './utils/adminStore';
 import { getProductPrice } from './utils/formatters';
 import { AdminPanel } from './components/admin/AdminPanel';
 import { Navbar } from './components/Navbar';
@@ -71,6 +71,7 @@ export function App() {
   }
 
   const handleAddToCart = (machine: MachineProduct, variant?: ProductVariant) => {
+    recordHotspotClick('Agregar al Carrito');
     const unitPriceMXN = getProductPrice(machine, variant, 'MXN');
     const unitPriceUSD = getProductPrice(machine, variant, 'USD');
     const itemId = variant ? `${machine.id}__${variant.id}` : machine.id;

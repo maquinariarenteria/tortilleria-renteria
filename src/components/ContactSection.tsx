@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, Send, MessageCircle, Clock, Truck, CreditCard, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { ScrollReveal } from './ScrollReveal';
 import { sendContactInquiryEmail } from '../utils/emailService';
@@ -6,8 +6,16 @@ import { getSiteConfig, recordHotspotClick } from '../utils/adminStore';
 import { CustomerQuote } from '../types/admin';
 
 export const ContactSection: React.FC = () => {
-  const config = getSiteConfig();
+  const [config, setConfig] = useState(getSiteConfig());
   const [submittedQuote, setSubmittedQuote] = useState<CustomerQuote | null>(null);
+
+  useEffect(() => {
+    const handleConfigUpdate = () => {
+      setConfig(getSiteConfig());
+    };
+    window.addEventListener('mr_config_updated', handleConfigUpdate);
+    return () => window.removeEventListener('mr_config_updated', handleConfigUpdate);
+  }, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',

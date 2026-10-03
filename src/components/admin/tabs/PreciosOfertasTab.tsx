@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PriceOfferItem } from '../../../types/admin';
-import { getStoredPriceOffers, saveStoredPriceOffers } from '../../../utils/adminStore';
+import { getStoredPriceOffers, saveStoredPriceOffers, getStoredMachines, saveStoredMachines } from '../../../utils/adminStore';
 import { DollarSign, Tag, Save, CheckCircle2, Percent, Truck } from 'lucide-react';
 
 export const PreciosOfertasTab: React.FC = () => {
@@ -20,7 +20,23 @@ export const PreciosOfertasTab: React.FC = () => {
   const handleSaveAll = (e: React.FormEvent) => {
     e.preventDefault();
     saveStoredPriceOffers(offers);
-    showToast('¡Lista de precios y ofertas guardada correctamente!');
+
+    // Sync prices directly into public machine catalog
+    const currentMachines = getStoredMachines();
+    const updatedMachines = currentMachines.map((m) => {
+      const match = offers.find((o) => o.machineId === m.id);
+      if (match) {
+        return {
+          ...m,
+          priceMXN: match.regularPriceMXN,
+          priceUSD: match.regularPriceUSD,
+        };
+      }
+      return m;
+    });
+    saveStoredMachines(updatedMachines);
+
+    showToast('¡Precios actualizados en la web y catálogo en vivo!');
   };
 
   return (

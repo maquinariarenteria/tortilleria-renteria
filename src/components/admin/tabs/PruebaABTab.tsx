@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ABExperiment } from '../../../types/admin';
 import { getStoredABTests, saveStoredABTests } from '../../../utils/adminStore';
 import { GitBranch, CheckCircle2, TrendingUp, Sparkles, Play, Pause } from 'lucide-react';
 
 export const PruebaABTab: React.FC = () => {
   const [experiments, setExperiments] = useState<ABExperiment[]>(getStoredABTests());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setExperiments(getStoredABTests());
+    };
+    window.addEventListener('mr_ab_updated', handleUpdate);
+    return () => window.removeEventListener('mr_ab_updated', handleUpdate);
+  }, []);
 
   const handleToggleStatus = (id: string) => {
     const updated = experiments.map(exp => {

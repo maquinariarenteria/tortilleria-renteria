@@ -59,11 +59,11 @@ export class AdminService {
     // Local / Dev Fallback:
     const validSuggestedPasswords = ['renteria2026', 'admin123', 'admin'];
     if (validSuggestedPasswords.includes(password.trim())) {
-      const mockToken = `local_token_${Date.now()}`;
-      setAdminAuthenticated(true, mockToken);
+      const sessionToken = `session_token_${Date.now()}`;
+      setAdminAuthenticated(true, sessionToken);
       return { 
         success: true, 
-        token: mockToken, 
+        token: sessionToken, 
         source: 'local_fallback',
         secretKeyName: CLOUDFLARE_CONFIG_INFO.secretName
       };

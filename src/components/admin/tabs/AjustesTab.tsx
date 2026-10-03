@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { AdminSettingsConfig } from '../../../types/admin';
-import { getStoredSettings, saveStoredSettings } from '../../../utils/adminStore';
+import { getStoredSettings, saveStoredSettings, getSiteConfig, saveSiteConfig } from '../../../utils/adminStore';
 import { AdminService, CLOUDFLARE_CONFIG_INFO } from '../../../services/adminService';
 import { 
   Send, Download, Check, X, ChevronDown, ChevronUp, 
-  Database, HardDrive, KeyRound, Cloud, Sparkles 
+  Database, HardDrive, KeyRound, Cloud, Sparkles, Store, Save 
 } from 'lucide-react';
 
 export const AjustesTab: React.FC = () => {
   const [settings, setSettings] = useState<AdminSettingsConfig>(getStoredSettings());
+  const [siteConfig, setSiteConfig] = useState(getSiteConfig());
+  const [configSuccess, setConfigSuccess] = useState(false);
   const [emailInput, setEmailInput] = useState(settings.reportEmail || 'maquinariarenteria17@gmail.com');
   const [salesTargetInput, setSalesTargetInput] = useState(settings.monthlySalesTarget.toString());
   const [isCloudflareAccordionOpen, setIsCloudflareAccordionOpen] = useState(true);
@@ -72,6 +74,15 @@ export const AjustesTab: React.FC = () => {
       setSettings(updated);
       showNotice('Meta mensual de ventas actualizada correctamente.');
     }
+  };
+
+  const handleSaveSiteConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updated = saveSiteConfig(siteConfig);
+    setSiteConfig(updated);
+    setConfigSuccess(true);
+    showNotice('¡Datos de la empresa y contacto actualizados en la web en vivo!');
+    setTimeout(() => setConfigSuccess(false), 3000);
   };
 
   const formattedUsedKB = (settings.storageUsedBytes / 1024).toFixed(0);
@@ -337,6 +348,109 @@ export const AjustesTab: React.FC = () => {
           </div>
         </div>
 
+      </div>
+
+      {/* Datos Oficiales de Contacto de Maquinaria Rentería (Sincronización Web) */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+              <Store className="w-4 h-4 text-[#2563eb]" />
+              <span>Datos Oficiales de Empresa y Contacto (Sincronización Web en Vivo)</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Los cambios guardados aquí se reflejan de inmediato en la barra superior, pie de página, botones de WhatsApp y correos de cotización.
+            </p>
+          </div>
+          {configSuccess && (
+            <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1 shrink-0 self-start sm:self-auto">
+              <Check className="w-3.5 h-3.5" /> Sincronizado
+            </span>
+          )}
+        </div>
+
+        <form onSubmit={handleSaveSiteConfig} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+          <div>
+            <label className="block font-bold text-slate-700 uppercase tracking-wide text-[10px] mb-1">Nombre Comercial</label>
+            <input
+              type="text"
+              value={siteConfig.businessName}
+              onChange={(e) => setSiteConfig({ ...siteConfig, businessName: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium focus:bg-white focus:outline-none focus:border-[#2563eb]"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 uppercase tracking-wide text-[10px] mb-1">Eslogan</label>
+            <input
+              type="text"
+              value={siteConfig.slogan}
+              onChange={(e) => setSiteConfig({ ...siteConfig, slogan: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium focus:bg-white focus:outline-none focus:border-[#2563eb]"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 uppercase tracking-wide text-[10px] mb-1">Teléfono Principal / WhatsApp Oficial</label>
+            <input
+              type="text"
+              value={siteConfig.phone1}
+              onChange={(e) => setSiteConfig({ ...siteConfig, phone1: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-[#2563eb]"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 uppercase tracking-wide text-[10px] mb-1">Teléfono Secundario de Planta</label>
+            <input
+              type="text"
+              value={siteConfig.phone2}
+              onChange={(e) => setSiteConfig({ ...siteConfig, phone2: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-[#2563eb]"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 uppercase tracking-wide text-[10px] mb-1">Correo Oficial de Contacto</label>
+            <input
+              type="email"
+              value={siteConfig.email}
+              onChange={(e) => setSiteConfig({ ...siteConfig, email: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium focus:bg-white focus:outline-none focus:border-[#2563eb]"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 uppercase tracking-wide text-[10px] mb-1">Enlace de Pago Stripe</label>
+            <input
+              type="text"
+              value={siteConfig.stripePaymentLink}
+              onChange={(e) => setSiteConfig({ ...siteConfig, stripePaymentLink: e.target.value })}
+              placeholder="https://buy.stripe.com/..."
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:bg-white focus:outline-none focus:border-[#2563eb]"
+            />
+          </div>
+
+          <div className="md:col-span-2 lg:col-span-2">
+            <label className="block font-bold text-slate-700 uppercase tracking-wide text-[10px] mb-1">Dirección de Planta y Taller</label>
+            <input
+              type="text"
+              value={siteConfig.address}
+              onChange={(e) => setSiteConfig({ ...siteConfig, address: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-medium focus:bg-white focus:outline-none focus:border-[#2563eb]"
+            />
+          </div>
+
+          <div className="md:col-span-2 lg:col-span-1 flex items-end">
+            <button
+              type="submit"
+              className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-95 text-white font-bold text-xs uppercase tracking-wide py-2.5 rounded-xl transition-all shadow-md shadow-blue-500/20 cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Guardar Datos en la Web</span>
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Cloudflare Storage & Secret Info Box */}

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { CartItem } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { sendOrderNotificationEmail } from '../utils/emailService';
-import { getSiteConfig, recordHotspotClick } from '../utils/adminStore';
+import { getSiteConfig, recordHotspotClick, recordABConversion, recordABVisitor } from '../utils/adminStore';
 import { AdminSaleOrder } from '../types/admin';
 import { 
   X, Trash2, Plus, Minus, MessageCircle, ShoppingBag, 
@@ -60,6 +60,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
   // Lock body scroll when drawer is open
   useEffect(() => {
     if (isOpen) {
+      recordABVisitor();
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
       return () => {
@@ -184,6 +185,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
 
     setIsProcessing(true);
     recordHotspotClick('Finalizar Pedido WhatsApp');
+    recordABConversion('A');
 
     const saleOrder = buildSaleRecord('Transferencia SPEI');
 
@@ -243,6 +245,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
   const handleConfirmStripePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
+    recordABConversion('B');
 
     const saleOrder = buildSaleRecord('Stripe');
 

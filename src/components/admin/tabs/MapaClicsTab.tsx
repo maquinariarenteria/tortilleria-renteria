@@ -1,11 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { getStoredHotspots } from '../../../utils/adminStore';
 import { INITIAL_USER_JOURNEYS } from '../../../utils/adminStore';
 import { MousePointer, ArrowRight, Smartphone, Monitor, MapPin, Zap } from 'lucide-react';
 
 export const MapaClicsTab: React.FC = () => {
-  const hotspots = getStoredHotspots();
+  const [hotspots, setHotspots] = useState(getStoredHotspots());
   const journeys = INITIAL_USER_JOURNEYS;
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setHotspots(getStoredHotspots());
+    };
+    window.addEventListener('mr_clicks_updated', handleUpdate);
+    return () => window.removeEventListener('mr_clicks_updated', handleUpdate);
+  }, []);
 
   return (
     <div className="p-4 md:p-8 space-y-6 text-slate-800 max-w-7xl mx-auto">

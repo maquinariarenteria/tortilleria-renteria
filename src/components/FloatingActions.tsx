@@ -1,5 +1,6 @@
 import React from 'react';
 import { Calendar } from 'lucide-react';
+import { recordHotspotClick } from '../utils/adminStore';
 
 interface FloatingActionsProps {
   onOpenEmail: () => void;
@@ -62,6 +63,7 @@ export const FloatingActions: React.FC<FloatingActionsProps> = ({
         href={whatsappUrl}
         target="_blank"
         rel="noreferrer"
+        onClick={() => recordHotspotClick('Botón WhatsApp Principal')}
         className="group relative flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#25D366] text-white shadow-lg hover:shadow-emerald-500/30 hover:-translate-y-1 active:scale-95 transition-all duration-200 border-2 border-white cursor-pointer"
         title="Chat Oficial de WhatsApp"
         aria-label="Chat Oficial de WhatsApp"

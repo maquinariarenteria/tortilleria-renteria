@@ -1,9 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Phone, Mail, MapPin, Clock, ShieldCheck } from 'lucide-react';
 import { getSiteConfig } from '../utils/adminStore';
 
 export const Footer: React.FC = () => {
-  const config = getSiteConfig();
+  const [config, setConfig] = useState(getSiteConfig());
+
+  useEffect(() => {
+    const handleConfigUpdate = () => {
+      setConfig(getSiteConfig());
+    };
+    window.addEventListener('mr_config_updated', handleConfigUpdate);
+    return () => window.removeEventListener('mr_config_updated', handleConfigUpdate);
+  }, []);
   return (
     <footer className="bg-[#0f172a] text-white pt-12 pb-8 border-t-4 border-[#2563eb]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">

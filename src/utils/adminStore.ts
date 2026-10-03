@@ -449,6 +449,62 @@ export function saveStoredABTests(tests: ABExperiment[]): void {
   window.dispatchEvent(new Event('mr_ab_updated'));
 }
 
+export function recordABVisitor(): void {
+  try {
+    const tests = getStoredABTests();
+    const updated = tests.map(test => {
+      if (test.id === 'exp_1' && test.status === 'running') {
+        const vA = { ...test.variantA, visitors: test.variantA.visitors + 1 };
+        const vB = { ...test.variantB, visitors: test.variantB.visitors + 1 };
+        const rateA = vA.visitors > 0 ? Number(((vA.conversions / vA.visitors) * 100).toFixed(1)) : 0;
+        const rateB = vB.visitors > 0 ? Number(((vB.conversions / vB.visitors) * 100).toFixed(1)) : 0;
+        return {
+          ...test,
+          variantA: { ...vA, conversionRate: rateA },
+          variantB: { ...vB, conversionRate: rateB },
+        };
+      }
+      return test;
+    });
+    saveStoredABTests(updated);
+  } catch (err) {
+    console.warn('Error recording AB visitor:', err);
+  }
+}
+
+export function recordABConversion(variant: 'A' | 'B'): void {
+  try {
+    const tests = getStoredABTests();
+    const updated = tests.map(test => {
+      if (test.id === 'exp_1' && test.status === 'running') {
+        const currentVariant = variant === 'A' ? test.variantA : test.variantB;
+        const conversions = currentVariant.conversions + 1;
+        const visitors = Math.max(currentVariant.visitors, conversions);
+        const conversionRate = visitors > 0 ? Number(((conversions / visitors) * 100).toFixed(1)) : 0;
+        const newVariantObj = { ...currentVariant, conversions, visitors, conversionRate };
+
+        let winningVariant: 'A' | 'B' | null = test.winningVariant ?? null;
+        if (variant === 'A' && newVariantObj.conversions > test.variantB.conversions + 2) {
+          winningVariant = 'A';
+        } else if (variant === 'B' && newVariantObj.conversions > test.variantA.conversions + 2) {
+          winningVariant = 'B';
+        }
+
+        return {
+          ...test,
+          variantA: variant === 'A' ? newVariantObj : test.variantA,
+          variantB: variant === 'B' ? newVariantObj : test.variantB,
+          winningVariant,
+        };
+      }
+      return test;
+    });
+    saveStoredABTests(updated);
+  } catch (err) {
+    console.warn('Error recording AB conversion:', err);
+  }
+}
+
 // ------------------------------------------
 // 6. CLICS Y HEATMAP (Live Click Tracking)
 // ------------------------------------------
@@ -515,7 +571,33 @@ export function getStoredPriceOffers(): PriceOfferItem[] {
   const machines = getStoredMachines();
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.OFFERS);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return machines.map(m => {
+          const match = parsed.find((p: PriceOfferItem) => p.machineId === m.id);
+          if (match) {
+            return {
+              ...match,
+              name: m.name,
+              regularPriceMXN: match.regularPriceMXN || m.priceMXN,
+              regularPriceUSD: match.regularPriceUSD || m.priceUSD,
+            };
+          }
+          return {
+            machineId: m.id,
+            name: m.name,
+            regularPriceMXN: m.priceMXN,
+            offerPriceMXN: Math.round(m.priceMXN * 0.95),
+            regularPriceUSD: m.priceUSD,
+            offerPriceUSD: Math.round(m.priceUSD * 0.95),
+            isOfferActive: false,
+            offerTag: 'Envío por coordinar',
+            minDepositPercentage: 50,
+          };
+        });
+      }
+    }
   } catch (e) {
     console.error('Error loading offers:', e);
   }

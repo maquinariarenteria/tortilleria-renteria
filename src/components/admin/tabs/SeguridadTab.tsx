@@ -229,29 +229,36 @@ export const SeguridadTab: React.FC = () => {
           </h3>
 
           <div className="space-y-2">
-            {logs.map((log) => (
-              <div
-                key={log.id}
-                className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-900">{log.action}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                      log.status === 'Permitido' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
-                    }`}>
-                      {log.status}
+            {logs.length === 0 ? (
+              <div className="bg-slate-50 border border-slate-200 p-6 rounded-xl text-center space-y-1 text-xs text-slate-500">
+                <p className="font-semibold text-slate-700">Sin intentos sospechosos ni accesos no autorizados</p>
+                <p className="text-[11px]">Cada intento de inicio de sesión en #admin o cambio de seguridad se registrará aquí en tiempo real con datos reales.</p>
+              </div>
+            ) : (
+              logs.map((log) => (
+                <div
+                  key={log.id}
+                  className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-900">{log.action}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                        log.status === 'Permitido' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                      }`}>
+                        {log.status}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-slate-500 font-mono">
+                      {log.ipAddress} · {log.location}
                     </span>
                   </div>
-                  <span className="text-[11px] text-slate-500 font-mono">
-                    {log.ipAddress} · {log.location}
-                  </span>
+                  <div className="text-right text-[11px] text-slate-400">
+                    {log.timestamp}
+                  </div>
                 </div>
-                <div className="text-right text-[11px] text-slate-400">
-                  {log.timestamp}
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
