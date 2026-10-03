@@ -1,33 +1,29 @@
 import React, { useState } from 'react';
 import { AdminSaleOrder } from '../../../types/admin';
 import { getStoredSales, updateSaleStatus } from '../../../utils/adminStore';
-import { ShoppingBag, Truck, CheckCircle2, Clock, Wrench, FileText, Download, Eye, ChevronRight } from 'lucide-react';
+import { FileText, Truck, CheckCircle2, Clock } from 'lucide-react';
 
 export const VentasTab: React.FC = () => {
   const [sales, setSales] = useState<AdminSaleOrder[]>(getStoredSales());
-  const [selectedSale, setSelectedSale] = useState<AdminSaleOrder | null>(null);
 
   const handleStatusChange = (folio: string, status: AdminSaleOrder['manufacturingStatus']) => {
     const updated = updateSaleStatus(folio, status);
     setSales(updated);
-    if (selectedSale && selectedSale.folio === folio) {
-      setSelectedSale({ ...selectedSale, manufacturingStatus: status });
-    }
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6 text-white max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 space-y-6 max-w-7xl mx-auto font-sans text-slate-900">
       
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <span>Órdenes y Ventas Cerradas</span>
-            <span className="text-xs bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+          <h2 className="text-xl font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+            <span>Órdenes y Ventas de Maquinaria</span>
+            <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
               {sales.length} Pedidos
             </span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Seguimiento de ciclo de fabricación, facturación y envíos a toda la República Mexicana.
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            Seguimiento de ciclo de fabricación en planta (Delicias, Chih.), facturación con CFDI y guías de transporte.
           </p>
         </div>
       </div>
@@ -37,23 +33,23 @@ export const VentasTab: React.FC = () => {
         {sales.map((order) => (
           <div
             key={order.folio}
-            className="bg-[#121520] border border-[#202538] hover:border-emerald-500/30 p-5 rounded-xl shadow-lg transition-all space-y-4"
+            className="bg-white border border-slate-200 hover:border-blue-300 p-5 rounded-2xl shadow-sm transition-all space-y-4"
           >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1c2132] pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono text-xs font-bold bg-[#1a1f33] text-emerald-400 px-2.5 py-1 rounded border border-emerald-500/20">
+                <span className="font-mono text-xs font-bold bg-blue-50 text-[#2563eb] px-2.5 py-1 rounded border border-blue-200">
                   {order.folio}
                 </span>
-                <span className="font-semibold text-sm text-white">{order.clientName}</span>
-                <span className="text-xs text-slate-400">· {order.shippingCity}, {order.shippingState}</span>
+                <span className="font-bold text-sm text-slate-900">{order.clientName}</span>
+                <span className="text-xs text-slate-500 font-medium">· {order.shippingCity}, {order.shippingState}</span>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Estado de Maquinaria:</span>
+                <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Fabricación:</span>
                 <select
                   value={order.manufacturingStatus}
                   onChange={(e) => handleStatusChange(order.folio, e.target.value as any)}
-                  className="bg-[#181c2b] border border-[#2a3047] text-xs text-emerald-300 font-semibold px-2.5 py-1 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  className="bg-slate-50 border border-slate-300 text-xs text-slate-900 font-bold px-3 py-1.5 rounded-xl focus:outline-none focus:border-[#2563eb] cursor-pointer"
                 >
                   <option value="Pendiente">Pendiente</option>
                   <option value="En Fabricación">En Fabricación</option>
@@ -69,41 +65,41 @@ export const VentasTab: React.FC = () => {
               
               {/* Items */}
               <div className="space-y-1.5">
-                <span className="text-slate-400 block font-medium">Equipos Adquiridos:</span>
+                <span className="text-slate-500 block font-bold uppercase tracking-wider text-[10px]">Equipos Adquiridos:</span>
                 {order.items.map((item, idx) => (
-                  <div key={idx} className="bg-[#161a28] p-2 rounded-lg border border-[#20263b] flex justify-between">
-                    <span className="text-slate-200">{item.name} x{item.quantity}</span>
-                    <span className="text-white font-semibold">${item.total.toLocaleString()}</span>
+                  <div key={idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex justify-between font-medium">
+                    <span className="text-slate-800">{item.name} x{item.quantity}</span>
+                    <span className="text-slate-900 font-mono font-bold">${item.total.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
 
               {/* Shipping & Payment */}
-              <div className="space-y-1 text-slate-400">
-                <span className="text-slate-300 block font-medium">Pago y Facturación:</span>
-                <p>Método: <b className="text-white">{order.paymentMethod}</b></p>
-                <p>Factura: {order.requiresInvoice ? <b className="text-emerald-400">Solicitada ({order.rfc})</b> : 'No requerida'}</p>
-                <p>Flete: <span className="text-white">${order.shippingCost.toLocaleString()} MXN</span></p>
+              <div className="space-y-1 text-slate-600 font-medium">
+                <span className="text-slate-500 block font-bold uppercase tracking-wider text-[10px]">Pago y Facturación:</span>
+                <p>Método: <b className="text-slate-900">{order.paymentMethod}</b></p>
+                <p>Factura: {order.requiresInvoice ? <b className="text-emerald-700">CFDI Solicitado ({order.rfc})</b> : 'Nota de Venta'}</p>
+                <p>Flete: <span className="text-slate-900 font-mono font-bold">${order.shippingCost.toLocaleString()} MXN</span></p>
                 {order.trackingNumber && (
-                  <p className="text-cyan-300 font-mono text-[11px]">Guía: {order.trackingNumber}</p>
+                  <p className="text-[#2563eb] font-mono text-[11px] font-bold">Guía Castores/TresGuerras: {order.trackingNumber}</p>
                 )}
               </div>
 
               {/* Total & Actions */}
               <div className="flex flex-col justify-between items-start md:items-end space-y-2">
                 <div className="text-left md:text-right">
-                  <span className="text-slate-400 text-[11px] block">Total Facturado</span>
-                  <span className="text-lg font-black text-emerald-400">
+                  <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Total Facturado</span>
+                  <span className="text-xl font-black text-slate-900 font-mono">
                     ${order.total.toLocaleString()} MXN
                   </span>
-                  <span className="text-[10px] text-slate-500 block">IVA incluido</span>
+                  <span className="text-[10px] text-slate-500 block font-medium">IVA y seguro de flete incluidos</span>
                 </div>
 
                 <button
-                  onClick={() => alert(`Generando nota de venta en PDF para ${order.folio}...`)}
-                  className="bg-[#1c2030] hover:bg-[#252b40] text-slate-300 border border-[#2d344e] px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                  onClick={() => alert(`Generando nota de venta / cotización formal en PDF para ${order.folio}...`)}
+                  className="bg-slate-900 hover:bg-black text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
-                  <FileText className="w-3.5 h-3.5 text-slate-400" />
+                  <FileText className="w-3.5 h-3.5 text-[#60a5fa]" />
                   <span>Nota de Venta PDF</span>
                 </button>
               </div>

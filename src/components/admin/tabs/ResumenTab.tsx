@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
-  DollarSign, ShoppingCart, Users, Calendar, TrendingUp, 
-  ArrowUpRight, Clock, MessageSquare, Wrench, ChevronRight, CheckCircle2 
+  DollarSign, MessageSquare, Calendar, Users, 
+  ArrowUpRight, Clock, Wrench, ChevronRight, CheckCircle2 
 } from 'lucide-react';
 import { 
   getStoredQuotes, 
@@ -22,43 +22,53 @@ export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
   const settings = getStoredSettings();
 
   const totalSalesAmount = sales.reduce((acc, s) => acc + s.total, 0);
-  const target = settings.monthlySalesTarget || 1000;
-  // Convert target to MXN equivalent or show in USD
-  const progressPercent = Math.min(100, Math.round((totalSalesAmount / (target * 19.5)) * 100));
+  const target = settings.monthlySalesTarget || 250000;
+  const progressPercent = Math.min(100, Math.round((totalSalesAmount / target) * 100));
 
   const pendingQuotes = quotes.filter(q => q.status === 'Nueva' || q.status === 'En Negociación');
   const upcomingAppointments = appointments.filter(a => a.status === 'Confirmada');
 
   return (
-    <div className="p-4 md:p-8 space-y-6 text-white max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 space-y-6 max-w-7xl mx-auto font-sans text-slate-900">
       
       {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-[#171b2b] via-[#141824] to-[#1a1f33] border border-[#232a42] p-5 rounded-2xl shadow-xl">
-        <div>
-          <h2 className="text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-            <span>Panel General de Maquinaria Renteria</span>
-            <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold px-2 py-0.5 rounded-full">
-              En Vivo
-            </span>
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Resumen de rendimiento comercial, pedidos de tortilladoras y solicitudes de cotización.
-          </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-slate-50 border border-slate-200 rounded-xl p-1.5 flex items-center justify-center shrink-0">
+            <img
+              src="/images/logo_transparent.png"
+              alt="Maquinaria Renteria"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-wide">
+                MAQUINARIA <span className="text-[#2563eb]">RENTERIA</span>
+              </h2>
+              <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                PLANTA EN VIVO
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 font-semibold mt-0.5">
+              Panel comercial y de control de fabricación • Delicias, Chihuahua
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={() => onNavigateTab('cotizaciones')}
-            className="bg-[#6366f1] hover:bg-[#5255e3] active:scale-95 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-600/20 transition-all cursor-pointer flex items-center gap-1.5"
+            className="bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-95 text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-1.5"
           >
             <span>Ver Cotizaciones</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => onNavigateTab('catalogo')}
-            className="bg-[#1e2336] hover:bg-[#282f48] text-slate-200 text-xs font-semibold px-4 py-2.5 rounded-xl border border-[#2d3652] transition-all cursor-pointer"
+            className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer"
           >
-            Editar Catálogo
+            Catálogo
           </button>
         </div>
       </div>
@@ -67,24 +77,24 @@ export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* KPI 1: Ventas vs Meta */}
-        <div className="bg-[#121520] border border-[#202538] p-5 rounded-xl shadow-lg relative overflow-hidden">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-400">Ventas del Mes</span>
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm relative overflow-hidden">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Ventas Facturadas</span>
+            <div className="p-2 rounded-xl bg-blue-50 text-[#2563eb]">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-bold text-white tracking-tight mb-2">
-            ${totalSalesAmount.toLocaleString()} <span className="text-xs font-normal text-slate-400">MXN</span>
+          <div className="text-2xl font-black text-slate-900 tracking-tight mb-2 font-mono">
+            ${totalSalesAmount.toLocaleString()} <span className="text-xs font-bold text-slate-400">MXN</span>
           </div>
           <div className="space-y-1.5">
-            <div className="flex justify-between text-[11px] text-slate-400">
-              <span>Meta mensual: ${target.toLocaleString()} USD</span>
-              <span className="text-emerald-400 font-semibold">{progressPercent}%</span>
+            <div className="flex justify-between text-[11px] text-slate-600 font-semibold">
+              <span>Meta mensual: ${target.toLocaleString()} MXN</span>
+              <span className="text-[#2563eb] font-bold">{progressPercent}%</span>
             </div>
-            <div className="w-full bg-[#1b2030] h-2 rounded-full overflow-hidden">
+            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
               <div 
-                className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-1000"
+                className="bg-[#2563eb] h-full rounded-full transition-all duration-1000"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -92,50 +102,50 @@ export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
         </div>
 
         {/* KPI 2: Cotizaciones Activas */}
-        <div className="bg-[#121520] border border-[#202538] p-5 rounded-xl shadow-lg">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-400">Cotizaciones Abiertas</span>
-            <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20">
+        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Cotizaciones Abiertas</span>
+            <div className="p-2 rounded-xl bg-blue-50 text-[#2563eb]">
               <MessageSquare className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-bold text-white tracking-tight mb-2">
-            {pendingQuotes.length} <span className="text-xs font-normal text-slate-400">pendientes</span>
+          <div className="text-2xl font-black text-slate-900 tracking-tight mb-1 font-mono">
+            {pendingQuotes.length} <span className="text-xs font-semibold text-slate-500">pendientes</span>
           </div>
-          <p className="text-[11px] text-purple-300 font-medium">
+          <p className="text-[11px] text-amber-700 font-bold">
             1 cotización nueva sin responder hoy
           </p>
         </div>
 
-        {/* KPI 3: Citas en Taller / Virtuales */}
-        <div className="bg-[#121520] border border-[#202538] p-5 rounded-xl shadow-lg">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-400">Citas Programadas</span>
-            <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+        {/* KPI 3: Citas en Taller */}
+        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Demostraciones en Taller</span>
+            <div className="p-2 rounded-xl bg-blue-50 text-[#2563eb]">
               <Calendar className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-bold text-white tracking-tight mb-2">
-            {upcomingAppointments.length} <span className="text-xs font-normal text-slate-400">confirmadas</span>
+          <div className="text-2xl font-black text-slate-900 tracking-tight mb-1 font-mono">
+            {upcomingAppointments.length} <span className="text-xs font-semibold text-slate-500">agendadas</span>
           </div>
-          <p className="text-[11px] text-cyan-300 font-medium">
-            Próxima cita en 24h (Delicias, Chih.)
+          <p className="text-[11px] text-[#2563eb] font-bold">
+            Próxima demo: Delicias, Chihuahua
           </p>
         </div>
 
         {/* KPI 4: Tráfico Real */}
-        <div className="bg-[#121520] border border-[#202538] p-5 rounded-xl shadow-lg">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-400">Visitas Registradas</span>
-            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Visitas Registradas</span>
+            <div className="p-2 rounded-xl bg-blue-50 text-[#2563eb]">
               <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-bold text-white tracking-tight mb-2">
-            {settings.visitRecordsCount} <span className="text-xs font-normal text-slate-400">visitas</span>
+          <div className="text-2xl font-black text-slate-900 tracking-tight mb-1 font-mono">
+            {settings.visitRecordsCount} <span className="text-xs font-semibold text-slate-500">visitas</span>
           </div>
-          <p className="text-[11px] text-slate-400">
-            Tasa de conversión a cotización: <b className="text-white">8.6%</b>
+          <p className="text-[11px] text-slate-600 font-medium">
+            Tasa de conversión a cotización: <b className="text-slate-900">8.6%</b>
           </p>
         </div>
 
@@ -145,15 +155,15 @@ export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Recent Quotes Feed */}
-        <div className="lg:col-span-8 bg-[#121520] border border-[#202538] rounded-xl p-5 md:p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-[#1f253a] pb-3">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-purple-400" />
+        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-[#2563eb]" />
               <span>Últimas Solicitudes de Cotización</span>
             </h3>
             <button
               onClick={() => onNavigateTab('cotizaciones')}
-              className="text-xs text-purple-400 hover:text-purple-300 font-medium flex items-center gap-1 cursor-pointer"
+              className="text-xs text-[#2563eb] hover:text-[#1d4ed8] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
             >
               <span>Ver todas</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -164,34 +174,37 @@ export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
             {quotes.slice(0, 3).map((q) => (
               <div 
                 key={q.id}
-                className="bg-[#161a29] border border-[#252c42] p-3.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-purple-500/30 transition-colors"
+                className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-blue-300 transition-colors"
               >
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-xs text-white">{q.customerName}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                      q.status === 'Nueva' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
-                      q.status === 'En Negociación' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
-                      'bg-slate-700 text-slate-300'
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-xs font-bold text-[#2563eb] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                      {q.folio}
+                    </span>
+                    <span className="font-bold text-sm text-slate-900">{q.customerName}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                      q.status === 'Nueva' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                      q.status === 'En Negociación' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                      'bg-slate-200 text-slate-700'
                     }`}>
                       {q.status}
                     </span>
-                    <span className="text-[11px] text-slate-400">· {q.stateOrCity}</span>
+                    <span className="text-xs text-slate-500 font-medium">· {q.stateOrCity}</span>
                   </div>
-                  <p className="text-xs text-slate-300 mt-1">
+                  <p className="text-xs text-slate-700 mt-1 font-medium">
                     {q.items.map(i => i.name).join(', ')}
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#22283e]">
-                  <span className="text-xs font-bold text-emerald-400">
+                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200">
+                  <span className="text-sm font-bold text-slate-900 font-mono">
                     ${q.estimatedTotal.toLocaleString()} MXN
                   </span>
                   <a
                     href={`https://wa.me/52${q.phone.replace(/\D/g, '')}?text=Hola%20${encodeURIComponent(q.customerName)},%20te%20contacto%20de%20Maquinaria%20Renteria%20sobre%20tu%20cotizaci%C3%B3n.`}
                     target="_blank"
                     rel="noreferrer"
-                    className="bg-[#22c55e]/20 hover:bg-[#22c55e]/30 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                    className="bg-[#22c55e] hover:bg-[#16a34a] text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-xs"
                   >
                     WhatsApp
                   </a>
@@ -203,63 +216,65 @@ export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
 
         {/* Quick Actions & System Status */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="bg-[#121520] border border-[#202538] rounded-xl p-5 shadow-xl space-y-3">
-            <h3 className="text-sm font-bold text-white mb-2">
-              Accesos Directos
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide mb-2">
+              Accesos Rápidos
             </h3>
 
             <button
               onClick={() => onNavigateTab('catalogo')}
-              className="w-full text-left bg-[#171b29] hover:bg-[#21273b] border border-[#272e45] p-3 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer"
+              className="w-full text-left bg-slate-50 hover:bg-slate-100 border border-slate-200 p-3 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
-                <Wrench className="w-4 h-4 text-purple-400" />
-                <span className="text-slate-200 font-medium">Subir foto de máquina a R2</span>
+                <Wrench className="w-4 h-4 text-[#2563eb]" />
+                <span className="text-slate-800 font-bold">Subir foto de máquina a Cloudflare R2</span>
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             </button>
 
             <button
               onClick={() => onNavigateTab('citas')}
-              className="w-full text-left bg-[#171b29] hover:bg-[#21273b] border border-[#272e45] p-3 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer"
+              className="w-full text-left bg-slate-50 hover:bg-slate-100 border border-slate-200 p-3 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
-                <Calendar className="w-4 h-4 text-cyan-400" />
-                <span className="text-slate-200 font-medium">Agendar demostración en taller</span>
+                <Calendar className="w-4 h-4 text-[#2563eb]" />
+                <span className="text-slate-800 font-bold">Agendar demo en taller Delicias</span>
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             </button>
 
             <button
               onClick={() => onNavigateTab('ajustes')}
-              className="w-full text-left bg-[#171b29] hover:bg-[#21273b] border border-[#272e45] p-3 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer"
+              className="w-full text-left bg-slate-50 hover:bg-slate-100 border border-slate-200 p-3 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
-                <Clock className="w-4 h-4 text-indigo-400" />
-                <span className="text-slate-200 font-medium">Configurar Reporte Mensual PDF</span>
+                <Clock className="w-4 h-4 text-[#2563eb]" />
+                <span className="text-slate-800 font-bold">Configuración de Reporte Mensual PDF</span>
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             </button>
           </div>
 
           {/* Cloudflare Status Widget */}
-          <div className="bg-[#121520] border border-[#202538] rounded-xl p-5 shadow-xl text-xs space-y-2.5">
-            <span className="text-slate-400 font-medium block text-[11px]">Infraestructura Cloudflare</span>
-            <div className="flex items-center justify-between text-slate-300">
-              <span>Cloudflare D1 (Datos)</span>
-              <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Conectado
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm text-xs space-y-2.5">
+            <span className="text-slate-500 font-bold uppercase tracking-wider block text-[10px]">
+              Infraestructura Cloudflare
+            </span>
+            <div className="flex items-center justify-between text-slate-700">
+              <span className="font-medium">Cloudflare D1 (Datos)</span>
+              <span className="text-emerald-700 font-bold flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Conectado
               </span>
             </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span>Cloudflare R2 (Imágenes)</span>
-              <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Conectado
+            <div className="flex items-center justify-between text-slate-700">
+              <span className="font-medium">Cloudflare R2 (Fotos)</span>
+              <span className="text-emerald-700 font-bold flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Conectado
               </span>
             </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span>Clave secreta (ADMIN_PASSWORD)</span>
-              <span className="text-purple-400 font-mono text-[10px]">Protegida</span>
+            <div className="flex items-center justify-between text-slate-700">
+              <span className="font-medium">Clave Secreta (ADMIN_PASSWORD)</span>
+              <span className="text-[#2563eb] font-mono text-[11px] font-bold">Protegida</span>
             </div>
           </div>
         </div>

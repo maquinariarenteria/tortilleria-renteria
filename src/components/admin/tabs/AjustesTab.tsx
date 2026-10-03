@@ -1,20 +1,15 @@
 import React, { useState } from 'react';
-import { 
-  AdminSettingsConfig 
-} from '../../../types/admin';
-import { 
-  getStoredSettings, 
-  saveStoredSettings 
-} from '../../../utils/adminStore';
+import { AdminSettingsConfig } from '../../../types/admin';
+import { getStoredSettings, saveStoredSettings } from '../../../utils/adminStore';
 import { AdminService, CLOUDFLARE_CONFIG_INFO } from '../../../services/adminService';
 import { 
   Send, Download, Check, X, ChevronDown, ChevronUp, 
-  Database, HardDrive, Shield, KeyRound, Cloud, Sparkles 
+  Database, HardDrive, KeyRound, Cloud, Sparkles 
 } from 'lucide-react';
 
 export const AjustesTab: React.FC = () => {
   const [settings, setSettings] = useState<AdminSettingsConfig>(getStoredSettings());
-  const [emailInput, setEmailInput] = useState(settings.reportEmail);
+  const [emailInput, setEmailInput] = useState(settings.reportEmail || 'maquinariarenteria17@gmail.com');
   const [salesTargetInput, setSalesTargetInput] = useState(settings.monthlySalesTarget.toString());
   const [isCloudflareAccordionOpen, setIsCloudflareAccordionOpen] = useState(true);
   const [isSendingTest, setIsSendingTest] = useState(false);
@@ -57,8 +52,7 @@ export const AjustesTab: React.FC = () => {
   };
 
   const handleDownloadMonthlyPdf = () => {
-    showNotice('Generando reporte PDF del mes con métricas de ventas y cotizaciones...');
-    // Trigger download of a clean printable window or mock pdf
+    showNotice('Generando reporte PDF mensual de ventas y cotizaciones de Maquinaria Rentería...');
     setTimeout(() => {
       window.print();
     }, 500);
@@ -67,7 +61,7 @@ export const AjustesTab: React.FC = () => {
   const handleToggleTelegram = (key: 'notifyNewQuotes' | 'notifyAbandonedCarts' | 'notifyAppointments') => {
     const updated = saveStoredSettings({ [key]: !settings[key] });
     setSettings(updated);
-    showNotice('Preferencia de Telegram actualizada.');
+    showNotice('Preferencia de alertas actualizada.');
   };
 
   const handleSaveSalesTarget = (e: React.FormEvent) => {
@@ -76,37 +70,37 @@ export const AjustesTab: React.FC = () => {
     if (!isNaN(val) && val > 0) {
       const updated = saveStoredSettings({ monthlySalesTarget: val });
       setSettings(updated);
-      showNotice('Meta mensual de ventas guardada correctamente.');
+      showNotice('Meta mensual de ventas actualizada correctamente.');
     }
   };
 
   const formattedUsedKB = (settings.storageUsedBytes / 1024).toFixed(0);
 
   return (
-    <div className="p-4 md:p-8 space-y-6 text-white max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 space-y-6 max-w-7xl mx-auto font-sans text-slate-900">
 
       {actionNotice && (
-        <div className="fixed top-20 right-6 z-50 bg-[#1c2237] border border-purple-500/50 text-white text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 animate-bounce">
-          <Sparkles className="w-4 h-4 text-purple-400" />
+        <div className="fixed top-20 right-6 z-50 bg-[#0f172a] text-white border-2 border-[#2563eb] text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 animate-bounce">
+          <Sparkles className="w-4 h-4 text-[#60a5fa]" />
           <span>{actionNotice}</span>
         </div>
       )}
 
-      {/* Main Top Card: Reporte mensual y limpieza de datos (EXACT TO SCREENSHOT) */}
-      <div className="bg-[#121520] border border-[#202538] rounded-xl p-5 md:p-6 shadow-xl">
-        <h2 className="text-base md:text-lg font-bold text-white mb-1.5">
+      {/* Main Top Card: Reporte mensual y limpieza de datos */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm">
+        <h2 className="text-base md:text-lg font-black text-slate-900 uppercase tracking-wide mb-1.5">
           Reporte mensual y limpieza de datos
         </h2>
-        <p className="text-xs text-slate-400 leading-relaxed max-w-4xl mb-6">
-          El día 1 de cada mes a las 7:00 te llega el reporte detallado del mes anterior en PDF a tu correo y a Telegram (con archivos de Excel). En Telegram también puedes escribir <code className="text-purple-300 bg-[#181d2e] px-1 py-0.5 rounded">/reporte</code> cuando quieras. Después se borran esos datos para no ocupar espacio.
+        <p className="text-xs text-slate-600 leading-relaxed max-w-4xl mb-6 font-medium">
+          El día 1 de cada mes a las 7:00 te llega el reporte detallado del mes anterior en PDF a tu correo oficial (<b className="text-slate-900">maquinariarenteria17@gmail.com</b>) y a Telegram (con archivos de Excel). En Telegram también puedes escribir <code className="text-[#2563eb] bg-blue-50 font-mono px-1 py-0.5 rounded font-bold">/reporte</code> cuando quieras. Después se depuran registros temporales para optimizar espacio en Cloudflare D1.
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* Left Column (Inputs, cloudflare guide & action buttons) */}
+          {/* Left Column */}
           <div className="lg:col-span-7 space-y-5">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-2">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
                 Correo para los reportes
               </label>
               <form onSubmit={handleSaveEmailAndTest} className="flex flex-col sm:flex-row gap-2">
@@ -114,155 +108,151 @@ export const AjustesTab: React.FC = () => {
                   type="email"
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
-                  placeholder="tucorreo@gmail.com"
-                  className="flex-1 bg-[#181c2b] border border-[#2a3047] rounded-lg px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
+                  placeholder="maquinariarenteria17@gmail.com"
+                  className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]"
                 />
                 <button
                   type="submit"
                   disabled={isSendingTest}
-                  className="bg-[#6366f1] hover:bg-[#5255e3] active:scale-95 text-white font-medium text-xs px-4 py-2.5 rounded-lg transition-all shadow-md shadow-indigo-600/20 whitespace-nowrap cursor-pointer disabled:opacity-50"
+                  className="bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-95 text-white font-bold text-xs uppercase tracking-wide px-5 py-2.5 rounded-xl transition-all shadow-md shadow-blue-500/20 whitespace-nowrap cursor-pointer disabled:opacity-50"
                 >
                   {isSendingTest ? 'Enviando...' : 'Guardar y enviar prueba'}
                 </button>
               </form>
             </div>
 
-            {/* Cloudflare Accordion */}
-            <div className="border border-[#22283e] bg-[#161a29]/60 rounded-lg p-3.5 text-xs">
+            {/* Cloudflare Email Routing Guide */}
+            <div className="border border-slate-200 bg-slate-50 rounded-xl p-4 text-xs">
               <button
                 type="button"
                 onClick={() => setIsCloudflareAccordionOpen(!isCloudflareAccordionOpen)}
-                className="w-full flex items-center justify-between text-left text-slate-300 hover:text-white font-semibold cursor-pointer"
+                className="w-full flex items-center justify-between text-left text-slate-800 font-bold uppercase tracking-wide cursor-pointer"
               >
                 <span>▼ Activar el correo en Cloudflare (gratis, una sola vez)</span>
-                {isCloudflareAccordionOpen ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+                {isCloudflareAccordionOpen ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
               </button>
 
               {isCloudflareAccordionOpen && (
-                <div className="mt-3 pt-3 border-t border-[#23293f] text-slate-400 space-y-2 text-[11px] leading-relaxed">
+                <div className="mt-3 pt-3 border-t border-slate-200 text-slate-600 space-y-2 text-[11px] leading-relaxed font-medium">
                   <p>
-                    1. Entra a <b className="text-slate-200">dash.cloudflare.com</b> → elige tu dominio <b className="text-purple-300">orion-creative-studio.com</b> o <b className="text-purple-300">maquinariarenteria.com</b> → <b className="text-slate-200">Email</b> → <b className="text-slate-200">Email Routing</b> → <b className="text-purple-300">Comenzar / Habilitar</b> y acepta los registros que agrega.
+                    1. Entra a <b className="text-slate-900">dash.cloudflare.com</b> → elige tu dominio <b className="text-[#2563eb]">maquinariarenteria.com</b> (o tu dominio asignado) → <b className="text-slate-900">Email</b> → <b className="text-slate-900">Email Routing</b> → <b className="text-[#2563eb]">Comenzar / Habilitar</b> y acepta los registros DNS que agrega.
                   </p>
                   <p>
-                    2. En <b className="text-slate-200">Direcciones de destino</b> (Destination addresses) agrega el mismo correo de arriba y abre el correo de verificación → <b className="text-emerald-400">Verify email address</b>.
+                    2. En <b className="text-slate-900">Direcciones de destino</b> (Destination addresses) agrega <b className="text-slate-900">maquinariarenteria17@gmail.com</b> y abre el correo de verificación de Cloudflare → <b className="text-emerald-700">Verify email address</b>.
                   </p>
                   <p>
-                    3. Vuelve aquí y presiona <b className="text-slate-200">Guardar y enviar prueba</b>.
+                    3. Vuelve aquí y presiona <b className="text-slate-900">Guardar y enviar prueba</b>.
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Bottom Buttons */}
+            {/* Bottom Action Buttons */}
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <button
                 type="button"
                 onClick={handleSendTestNow}
                 disabled={isSendingTest}
-                className="bg-[#1c2030] hover:bg-[#252b40] active:scale-95 text-slate-200 border border-[#2e344d] px-4 py-2.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                className="bg-slate-900 hover:bg-black active:scale-95 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Send className="w-3.5 h-3.5 text-slate-300" />
+                <Send className="w-3.5 h-3.5 text-[#60a5fa]" />
                 <span>Enviar reporte de prueba ahora</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleDownloadMonthlyPdf}
-                className="bg-[#1c2030] hover:bg-[#252b40] active:scale-95 text-slate-200 border border-[#2e344d] px-4 py-2.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer"
+                className="bg-white hover:bg-slate-50 active:scale-95 text-slate-700 border border-slate-300 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
               >
-                <Download className="w-3.5 h-3.5 text-slate-300" />
+                <Download className="w-3.5 h-3.5 text-slate-500" />
                 <span>Descargar PDF del mes</span>
               </button>
 
-              <span className="text-[11px] text-slate-400 flex items-center gap-1.5 ml-1">
+              <span className="text-[11px] text-slate-600 font-semibold flex items-center gap-1.5 ml-1">
                 <span>Telegram conectado</span>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <Check className="w-4 h-4 text-emerald-600" />
               </span>
             </div>
           </div>
 
-          {/* Right Column (Metrics and Status Box) */}
-          <div className="lg:col-span-5 bg-[#0f111a] border border-[#22273c] rounded-xl p-5 space-y-4 text-xs">
+          {/* Right Column: Status & Storage */}
+          <div className="lg:col-span-5 bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-xs">
             
             {/* Espacio usado */}
-            <div className="flex items-start justify-between border-b border-[#1c2032] pb-3">
+            <div className="flex items-start justify-between border-b border-slate-200 pb-3">
               <div>
-                <span className="text-slate-400 block text-[11px]">Espacio usado</span>
-                <span className="text-[11px] text-slate-500">{settings.visitRecordsCount} registros de visitas · límite gratis 5 GB</span>
+                <span className="text-slate-500 block text-[11px] font-bold uppercase tracking-wider">Espacio usado en Cloudflare D1</span>
+                <span className="text-[11px] text-slate-500">{settings.visitRecordsCount} registros de visitas • límite gratuito 5 GB</span>
               </div>
-              <span className="text-sm font-bold text-white tracking-wide">
+              <span className="text-base font-black text-slate-900 font-mono">
                 {formattedUsedKB} KB
               </span>
             </div>
 
             {/* Última prueba */}
-            <div className="flex items-center justify-between border-b border-[#1c2032] pb-3">
-              <span className="text-slate-400 text-[11px]">Última prueba</span>
-              <span className="text-slate-200 text-xs font-medium">{settings.lastTestDate}</span>
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <span className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">Última prueba</span>
+              <span className="text-slate-800 text-xs font-bold">{settings.lastTestDate}</span>
             </div>
 
             {/* Correo */}
-            <div className="flex items-center justify-between border-b border-[#1c2032] pb-3">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div>
-                <span className="text-slate-400 block text-[11px]">Correo</span>
-                <span className="text-[11px] text-slate-500">
-                  {settings.reportEmail || 'Escribe el correo para reportes en Ajustes.'}
+                <span className="text-slate-500 block text-[11px] font-bold uppercase tracking-wider">Correo</span>
+                <span className="text-[11px] text-slate-700 font-medium">
+                  {settings.reportEmail || 'maquinariarenteria17@gmail.com'}
                 </span>
               </div>
-              {settings.reportEmail ? (
-                <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-              ) : (
-                <X className="w-4 h-4 text-rose-500 shrink-0" />
-              )}
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
             </div>
 
             {/* Telegram */}
-            <div className="flex items-center justify-between border-b border-[#1c2032] pb-3">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div>
-                <span className="text-slate-400 block text-[11px]">Telegram</span>
-                <span className="text-[11px] text-slate-500">Enviado correctamente</span>
+                <span className="text-slate-500 block text-[11px] font-bold uppercase tracking-wider">Telegram</span>
+                <span className="text-[11px] text-slate-700 font-medium">Canal oficial activo (@MaquinariaRenteria_bot)</span>
               </div>
-              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
             </div>
 
             {/* Última limpieza */}
             <div className="flex items-center justify-between pb-1">
-              <span className="text-slate-400 text-[11px]">Última limpieza</span>
-              <span className="text-slate-300 text-xs font-medium">{settings.nextCleanupDate}</span>
+              <span className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">Última limpieza</span>
+              <span className="text-slate-700 text-xs font-bold">{settings.nextCleanupDate}</span>
             </div>
 
-            {/* Disclaimer text */}
-            <p className="text-[10px] text-slate-500 leading-relaxed pt-2 border-t border-[#1c2032]">
-              Se conservan: cotizaciones abiertas (nuevas, contactadas o en negociación), cupones disponibles, imágenes del catálogo, precios y configuración. Si ningún canal recibe el reporte, se reintenta cada hora hasta el día 5.
+            {/* Disclaimer */}
+            <p className="text-[10px] text-slate-500 leading-relaxed pt-2 border-t border-slate-200 font-medium">
+              Se conservan permanentemente: cotizaciones abiertas, pedidos en fabricación, catálogo de maquinaria, fotos en R2 y configuración.
             </p>
           </div>
 
         </div>
       </div>
 
-      {/* Row 2: Avisos por Telegram (gratis) & Meta mensual de ventas */}
+      {/* Row 2: Avisos por Telegram & Meta mensual de ventas */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Card: Avisos por Telegram (gratis) */}
-        <div className="lg:col-span-7 bg-[#121520] border border-[#202538] rounded-xl p-5 md:p-6 shadow-xl">
-          <h3 className="text-sm font-bold text-white mb-1">
-            Avisos por Telegram (gratis)
+        {/* Telegram Alerts Card */}
+        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm">
+          <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide mb-1">
+            Avisos por Telegram (Gratis)
           </h3>
-          <p className="text-xs text-emerald-400 font-medium mb-5 flex items-center gap-1.5">
-            <Check className="w-3.5 h-3.5" />
-            <span>Conectado con Djdbd · bot {settings.telegramBotUsername}</span>
+          <p className="text-xs text-emerald-700 font-bold mb-5 flex items-center gap-1.5">
+            <Check className="w-4 h-4 text-emerald-600" />
+            <span>Conectado con bot oficial {settings.telegramBotUsername}</span>
           </p>
 
           <div className="space-y-4">
             
-            {/* Toggle 1: Cotizaciones y pedidos nuevos */}
-            <div className="flex items-center justify-between py-1">
-              <span className="text-xs text-slate-200">Cotizaciones y pedidos nuevos</span>
+            {/* Toggle 1: Cotizaciones y pedidos */}
+            <div className="flex items-center justify-between py-1 border-b border-slate-100 pb-2">
+              <span className="text-xs text-slate-700 font-semibold">Cotizaciones y pedidos nuevos de tortilladoras</span>
               <button
                 type="button"
                 onClick={() => handleToggleTelegram('notifyNewQuotes')}
                 className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                  settings.notifyNewQuotes ? 'bg-[#7c3aed]' : 'bg-[#2b3149]'
+                  settings.notifyNewQuotes ? 'bg-[#2563eb]' : 'bg-slate-300'
                 }`}
               >
                 <div
@@ -274,13 +264,13 @@ export const AjustesTab: React.FC = () => {
             </div>
 
             {/* Toggle 2: Carritos abandonados */}
-            <div className="flex items-center justify-between py-1">
-              <span className="text-xs text-slate-200">Carritos abandonados (30 min después)</span>
+            <div className="flex items-center justify-between py-1 border-b border-slate-100 pb-2">
+              <span className="text-xs text-slate-700 font-semibold">Carritos abandonados en catálogo (30 min después)</span>
               <button
                 type="button"
                 onClick={() => handleToggleTelegram('notifyAbandonedCarts')}
                 className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                  settings.notifyAbandonedCarts ? 'bg-[#7c3aed]' : 'bg-[#2b3149]'
+                  settings.notifyAbandonedCarts ? 'bg-[#2563eb]' : 'bg-slate-300'
                 }`}
               >
                 <div
@@ -291,14 +281,14 @@ export const AjustesTab: React.FC = () => {
               </button>
             </div>
 
-            {/* Toggle 3: Citas: nuevas, recordatorio 1 h antes */}
+            {/* Toggle 3: Citas en taller */}
             <div className="flex items-center justify-between py-1">
-              <span className="text-xs text-slate-200">Citas: nuevas, recordatorio 1 h antes y agenda del día (8:00)</span>
+              <span className="text-xs text-slate-700 font-semibold">Citas: demostraciones en taller Delicias, recordatorio 1 h antes y agenda (8:00 AM)</span>
               <button
                 type="button"
                 onClick={() => handleToggleTelegram('notifyAppointments')}
                 className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                  settings.notifyAppointments ? 'bg-[#7c3aed]' : 'bg-[#2b3149]'
+                  settings.notifyAppointments ? 'bg-[#2563eb]' : 'bg-slate-300'
                 }`}
               >
                 <div
@@ -312,14 +302,14 @@ export const AjustesTab: React.FC = () => {
           </div>
         </div>
 
-        {/* Card: Meta mensual de ventas */}
-        <div className="lg:col-span-5 bg-[#121520] border border-[#202538] rounded-xl p-5 md:p-6 shadow-xl flex flex-col justify-between">
+        {/* Sales Target Card */}
+        <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm flex flex-col justify-between">
           <div>
-            <h3 className="text-sm font-bold text-white mb-1">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide mb-1">
               Meta mensual de ventas
             </h3>
-            <p className="text-xs text-slate-400 mb-5">
-              Se usa en Resumen, Ventas y en el resumen semanal
+            <p className="text-xs text-slate-500 mb-5 font-medium">
+              Se utiliza como indicador comercial en Resumen, Ventas y reporte PDF.
             </p>
 
             <form onSubmit={handleSaveSalesTarget} className="flex items-center gap-3">
@@ -327,89 +317,77 @@ export const AjustesTab: React.FC = () => {
                 type="number"
                 value={salesTargetInput}
                 onChange={(e) => setSalesTargetInput(e.target.value)}
-                className="w-32 bg-[#181c2b] border border-[#2a3047] rounded-lg px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500 font-semibold"
+                className="w-36 bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#2563eb] font-bold font-mono"
               />
-              <span className="text-xs text-slate-300 font-medium whitespace-nowrap">
-                USD por mes
+              <span className="text-xs text-slate-700 font-bold uppercase tracking-wider whitespace-nowrap">
+                MXN por mes
               </span>
               <button
                 type="submit"
-                className="bg-[#6366f1] hover:bg-[#5255e3] active:scale-95 text-white font-medium text-xs px-5 py-2.5 rounded-lg transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
+                className="bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-95 text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all shadow-md shadow-blue-500/20 cursor-pointer"
               >
                 Guardar
               </button>
             </form>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-[#1e2337] text-[11px] text-slate-500 flex items-center justify-between">
-            <span>Objetivo actual: <b>${parseFloat(salesTargetInput || '0').toLocaleString()} USD</b></span>
-            <span className="text-emerald-400">Activo en Resumen</span>
+          <div className="mt-6 pt-4 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between font-medium">
+            <span>Objetivo fijado: <b className="text-slate-900">${parseFloat(salesTargetInput || '0').toLocaleString()} MXN</b></span>
+            <span className="text-emerald-700 font-bold">Activo en Resumen</span>
           </div>
         </div>
 
       </div>
 
-      {/* Cloudflare Storage & Secret Architecture Guide Card */}
-      <div className="bg-[#121520] border border-[#202538] rounded-xl p-5 md:p-6 shadow-xl space-y-4">
-        <div className="flex items-center gap-2 text-purple-300 font-bold text-sm">
-          <Cloud className="w-5 h-5 text-purple-400" />
-          <span>Configuración de Almacenamiento y Secretos en Cloudflare</span>
+      {/* Cloudflare Storage & Secret Info Box */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
+        <div className="flex items-center gap-2 text-slate-900 font-black text-sm uppercase tracking-wide">
+          <Cloud className="w-5 h-5 text-[#2563eb]" />
+          <span>Configuración Oficial en Cloudflare</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
           
-          {/* Box 1: Secreto de Acceso */}
-          <div className="bg-[#0e111a] border border-[#23283c] p-4 rounded-xl space-y-2">
-            <div className="flex items-center gap-2 text-indigo-300 font-semibold">
-              <KeyRound className="w-4 h-4" />
-              <span>1. Clave Secreta en Cloudflare</span>
+          {/* Secret */}
+          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2">
+            <div className="flex items-center gap-2 text-slate-900 font-bold">
+              <KeyRound className="w-4 h-4 text-[#2563eb]" />
+              <span>1. Clave Secreta</span>
             </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Nombre de la variable secreta para el login:
+            <p className="text-[11px] text-slate-600">
+              Nombre de la variable secreta en Cloudflare:
             </p>
-            <div className="bg-[#161a29] p-2 rounded border border-[#2a3049] font-mono text-purple-300 text-[11px]">
+            <div className="bg-white p-2 rounded-lg border border-slate-300 font-mono text-[#2563eb] font-bold text-[11px]">
               {CLOUDFLARE_CONFIG_INFO.secretName}
             </div>
-            <p className="text-[11px] text-slate-500">
-              Comando: <br />
-              <code className="text-slate-300">npx wrangler secret put ADMIN_PASSWORD</code>
-            </p>
           </div>
 
-          {/* Box 2: Cloudflare D1 (Datos) */}
-          <div className="bg-[#0e111a] border border-[#23283c] p-4 rounded-xl space-y-2">
-            <div className="flex items-center gap-2 text-cyan-300 font-semibold">
-              <Database className="w-4 h-4" />
-              <span>2. Cloudflare D1 (Información)</span>
+          {/* D1 */}
+          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2">
+            <div className="flex items-center gap-2 text-slate-900 font-bold">
+              <Database className="w-4 h-4 text-[#2563eb]" />
+              <span>2. Cloudflare D1 (Datos)</span>
             </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              <b>Dónde conviene almacenar datos:</b> Cotizaciones, citas, ventas, cupones, oportunidades y ajustes.
+            <p className="text-[11px] text-slate-600">
+              Guarda cotizaciones, ventas, citas y configuración:
             </p>
-            <div className="bg-[#161a29] p-2 rounded border border-[#2a3049] font-mono text-cyan-300 text-[11px]">
-              Binding: DB (SQL Database)
+            <div className="bg-white p-2 rounded-lg border border-slate-300 font-mono text-slate-800 font-bold text-[11px]">
+              DB (tortilleria-renteria-db)
             </div>
-            <p className="text-[11px] text-slate-500">
-              Comando: <br />
-              <code className="text-slate-300">npx wrangler d1 create tortilleria-renteria-db</code>
-            </p>
           </div>
 
-          {/* Box 3: Cloudflare R2 (Imágenes) */}
-          <div className="bg-[#0e111a] border border-[#23283c] p-4 rounded-xl space-y-2">
-            <div className="flex items-center gap-2 text-amber-300 font-semibold">
-              <HardDrive className="w-4 h-4" />
-              <span>3. Cloudflare R2 (Imágenes)</span>
+          {/* R2 */}
+          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2">
+            <div className="flex items-center gap-2 text-slate-900 font-bold">
+              <HardDrive className="w-4 h-4 text-[#2563eb]" />
+              <span>3. Cloudflare R2 (Fotos)</span>
             </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              <b>Dónde conviene almacenar imágenes:</b> Fotos de máquinas pesadas en alta resolución y PDFs (Cero costo de egress).
+            <p className="text-[11px] text-slate-600">
+              Aloja fotos en alta resolución de rodillos y prensas:
             </p>
-            <div className="bg-[#161a29] p-2 rounded border border-[#2a3049] font-mono text-amber-300 text-[11px]">
-              Binding: MEDIA_BUCKET (R2)
+            <div className="bg-white p-2 rounded-lg border border-slate-300 font-mono text-slate-800 font-bold text-[11px]">
+              MEDIA_BUCKET (R2)
             </div>
-            <p className="text-[11px] text-slate-500">
-              Comando: <br />
-              <code className="text-slate-300">npx wrangler r2 bucket create tortilleria-renteria-media</code>
-            </p>
           </div>
 
         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MachineProduct, MachineCategory, EnergyType, Model3DType } from '../../../types';
+import { MachineProduct, MachineCategory, EnergyType } from '../../../types';
 import { 
   getStoredMachines, 
   updateStoredMachine, 
@@ -8,8 +8,8 @@ import {
 } from '../../../utils/adminStore';
 import { AdminService } from '../../../services/adminService';
 import { 
-  Wrench, Plus, Edit3, Trash2, Upload, 
-  Star, Sparkles, X 
+  Plus, Edit3, Trash2, Upload, 
+  Star, Sparkles, X, CheckCircle 
 } from 'lucide-react';
 
 export const CatalogoTab: React.FC = () => {
@@ -72,7 +72,7 @@ export const CatalogoTab: React.FC = () => {
 
     if (res.success && res.url) {
       setEditingMachine({ ...editingMachine, imageUrl: res.url });
-      showToast('Imagen vinculada exitosamente.');
+      showToast('Imagen vinculada exitosamente con R2.');
     } else {
       showToast(res.error || 'Error al subir la imagen.');
     }
@@ -113,31 +113,31 @@ export const CatalogoTab: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6 text-white max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 space-y-6 text-slate-800 max-w-7xl mx-auto">
       
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-[#1c2237] border border-purple-500/50 text-white text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 animate-bounce">
-          <Sparkles className="w-4 h-4 text-purple-400" />
-          <span>{toastMessage}</span>
+        <div className="fixed top-20 right-6 z-50 bg-white border border-slate-200 text-slate-800 text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 animate-bounce">
+          <CheckCircle className="w-4 h-4 text-emerald-600" />
+          <span className="font-medium">{toastMessage}</span>
         </div>
       )}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <span>Catálogo de Maquinaria</span>
-            <span className="text-xs bg-purple-500/20 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-500/30">
+          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <span>Catálogo de Maquinaria Rentería</span>
+            <span className="text-xs bg-blue-50 text-blue-700 font-bold px-2.5 py-0.5 rounded-full border border-blue-200">
               {machines.length} Modelos
             </span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Administra precios, fotos alojadas en Cloudflare R2, fichas técnicas y modelos destacados.
+          <p className="text-xs text-slate-500 mt-1">
+            Administra precios de venta, fotos alojadas en Cloudflare R2, fichas técnicas y modelos destacados.
           </p>
         </div>
 
         <button
           onClick={handleOpenCreate}
-          className="bg-[#6366f1] hover:bg-[#5255e3] active:scale-95 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+          className="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>Nueva Máquina</span>
@@ -145,29 +145,29 @@ export const CatalogoTab: React.FC = () => {
       </div>
 
       {/* Machines Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {machines.map((m) => (
           <div
             key={m.id}
-            className="bg-[#121520] border border-[#202538] hover:border-purple-500/40 rounded-xl overflow-hidden shadow-lg transition-all flex flex-col justify-between"
+            className="bg-white border border-slate-200 hover:border-blue-400 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
           >
             <div>
               {/* Image Preview with badge */}
-              <div className="relative h-44 bg-[#0a0c14] overflow-hidden">
+              <div className="relative h-48 bg-slate-100 overflow-hidden">
                 <img
                   src={m.imageUrl || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80'}
                   alt={m.name}
                   className="w-full h-full object-cover object-center"
                 />
                 {m.badge && (
-                  <span className="absolute top-2.5 left-2.5 bg-purple-600/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
+                  <span className="absolute top-2.5 left-2.5 bg-blue-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs">
                     {m.badge}
                   </span>
                 )}
                 <button
                   onClick={() => handleToggleFeatured(m)}
-                  className={`absolute top-2.5 right-2.5 p-1.5 rounded-full backdrop-blur-sm transition-colors cursor-pointer ${
-                    m.featured ? 'bg-amber-500 text-white' : 'bg-black/60 text-slate-300 hover:text-amber-400'
+                  className={`absolute top-2.5 right-2.5 p-1.5 rounded-full shadow-xs backdrop-blur-xs transition-colors cursor-pointer ${
+                    m.featured ? 'bg-amber-500 text-white' : 'bg-white/80 text-slate-600 hover:text-amber-500'
                   }`}
                   title={m.featured ? 'Destacada en inicio' : 'Destacar en inicio'}
                 >
@@ -176,37 +176,37 @@ export const CatalogoTab: React.FC = () => {
               </div>
 
               {/* Info */}
-              <div className="p-4 space-y-2">
+              <div className="p-4 space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-bold text-sm text-white line-clamp-1">{m.name}</h3>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 bg-[#191d2c] px-2 py-0.5 rounded border border-[#262c42]">
+                  <h3 className="font-bold text-sm text-slate-900 line-clamp-1">{m.name}</h3>
+                  <span className="text-[10px] uppercase font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 shrink-0">
                     {m.category}
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-400 line-clamp-2">
+                <p className="text-xs text-slate-500 line-clamp-2">
                   {m.shortDescription}
                 </p>
 
-                <div className="bg-[#161a28] p-2.5 rounded-lg border border-[#22283e] text-xs space-y-1">
-                  <div className="flex justify-between text-slate-300">
-                    <span className="text-slate-400">Capacidad:</span>
-                    <b>{m.capacityPerHour.toLocaleString()} tortillas/hr</b>
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-xs space-y-1">
+                  <div className="flex justify-between text-slate-700">
+                    <span className="text-slate-500">Capacidad:</span>
+                    <b className="text-slate-900">{m.capacityPerHour.toLocaleString()} tortillas/hr</b>
                   </div>
-                  <div className="flex justify-between text-slate-300">
-                    <span className="text-slate-400">Energía:</span>
+                  <div className="flex justify-between text-slate-700">
+                    <span className="text-slate-500">Energía:</span>
                     <span>{m.energyType}</span>
                   </div>
                 </div>
 
-                <div className="pt-2 flex items-baseline justify-between border-t border-[#1c2032]">
+                <div className="pt-2 flex items-baseline justify-between border-t border-slate-100">
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Precio Lista</span>
-                    <span className="text-base font-extrabold text-emerald-400">
+                    <span className="text-[10px] text-slate-400 block font-medium">Precio Lista</span>
+                    <span className="text-base font-extrabold text-blue-700">
                       ${m.priceMXN.toLocaleString()} MXN
                     </span>
                   </div>
-                  <span className="text-xs font-semibold text-slate-400">
+                  <span className="text-xs font-semibold text-slate-500">
                     ${m.priceUSD.toLocaleString()} USD
                   </span>
                 </div>
@@ -214,17 +214,17 @@ export const CatalogoTab: React.FC = () => {
             </div>
 
             {/* Actions */}
-            <div className="p-3 bg-[#0f111a] border-t border-[#1a1f30] flex items-center justify-between text-xs">
+            <div className="p-3 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between text-xs">
               <button
                 onClick={() => handleOpenEdit(m)}
-                className="bg-[#1a1f30] hover:bg-[#252c42] text-slate-200 border border-[#2d354e] px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer font-medium shadow-2xs"
               >
-                <Edit3 className="w-3.5 h-3.5 text-purple-400" />
+                <Edit3 className="w-3.5 h-3.5 text-blue-600" />
                 <span>Editar Ficha</span>
               </button>
               <button
                 onClick={() => handleDelete(m.id)}
-                className="text-slate-500 hover:text-rose-400 p-1.5 rounded transition-colors cursor-pointer"
+                className="text-slate-400 hover:text-rose-600 p-1.5 rounded transition-colors cursor-pointer"
                 title="Eliminar del catálogo"
               >
                 <Trash2 className="w-4 h-4" />
@@ -236,18 +236,18 @@ export const CatalogoTab: React.FC = () => {
 
       {/* Edit / Create Modal */}
       {editingMachine && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-[#121520] border border-[#242b42] rounded-2xl w-full max-w-2xl p-6 shadow-2xl text-xs space-y-4 my-8">
-            <div className="flex items-center justify-between border-b border-[#202538] pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl p-6 shadow-2xl text-xs space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-sm font-bold text-white">
+                <h3 className="text-base font-bold text-slate-900">
                   {isNew ? 'Nueva Máquina en Catálogo' : `Editar: ${editingMachine.name}`}
                 </h3>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-slate-500">
                   Las imágenes se vinculan con Cloudflare R2 (almacenamiento masivo sin costo de ancho de banda).
                 </p>
               </div>
-              <button onClick={() => setEditingMachine(null)} className="text-slate-400 hover:text-white cursor-pointer">
+              <button onClick={() => setEditingMachine(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -255,18 +255,18 @@ export const CatalogoTab: React.FC = () => {
             <form onSubmit={handleSave} className="space-y-4">
               
               {/* Image Preview & Upload */}
-              <div className="bg-[#161a29] border border-[#252c42] p-4 rounded-xl flex flex-col sm:flex-row items-center gap-4">
+              <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row items-center gap-4">
                 <img
                   src={editingMachine.imageUrl || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80'}
                   alt="Preview"
-                  className="w-24 h-24 object-cover rounded-lg border border-[#2b334e] bg-black"
+                  className="w-24 h-24 object-cover rounded-lg border border-slate-200 bg-white"
                 />
                 <div className="flex-1 space-y-2 text-center sm:text-left">
-                  <span className="font-semibold text-white block">Imagen Principal de la Máquina</span>
-                  <p className="text-[11px] text-slate-400">
-                    Sube una foto clara (JPG, PNG, WebP). En Cloudflare se aloja en el bucket <code className="text-purple-300">MEDIA_BUCKET</code>.
+                  <span className="font-semibold text-slate-900 block">Imagen Principal de la Máquina</span>
+                  <p className="text-[11px] text-slate-500">
+                    Sube una foto de alta calidad (JPG, PNG, WebP). En Cloudflare se aloja en el bucket <code className="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">MEDIA_BUCKET</code>.
                   </p>
-                  <label className="inline-flex items-center gap-1.5 bg-[#6366f1] hover:bg-[#5255e3] text-white text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer transition-colors shadow">
+                  <label className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer transition-colors shadow-2xs">
                     <Upload className="w-3.5 h-3.5" />
                     <span>{isUploadingR2 ? 'Subiendo a R2...' : 'Seleccionar archivo local'}</span>
                     <input
@@ -282,22 +282,22 @@ export const CatalogoTab: React.FC = () => {
               {/* Basic Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Nombre del Modelo</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Nombre del Modelo</label>
                   <input
                     type="text"
                     required
                     value={editingMachine.name}
                     onChange={(e) => setEditingMachine({ ...editingMachine, name: e.target.value })}
                     placeholder="Ej. Rodillo Doble Industrial 2026"
-                    className="w-full bg-[#181c2b] border border-[#2a3047] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Categoría</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Categoría</label>
                   <select
                     value={editingMachine.category}
                     onChange={(e) => setEditingMachine({ ...editingMachine, category: e.target.value as MachineCategory })}
-                    className="w-full bg-[#181c2b] border border-[#2a3047] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500"
                   >
                     <option value="prensas">Prensas para Tortillas</option>
                     <option value="hornos">Hornos Térmicos</option>
@@ -310,46 +310,46 @@ export const CatalogoTab: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Descripción Breve</label>
+                <label className="block text-slate-700 font-semibold mb-1">Descripción Breve</label>
                 <input
                   type="text"
                   value={editingMachine.shortDescription}
                   onChange={(e) => setEditingMachine({ ...editingMachine, shortDescription: e.target.value })}
                   placeholder="Ej. El estándar de oro para taquerías y fábricas"
-                  className="w-full bg-[#181c2b] border border-[#2a3047] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500"
                 />
               </div>
 
               {/* Prices */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Precio MXN</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Precio MXN</label>
                   <input
                     type="number"
                     required
                     value={editingMachine.priceMXN}
                     onChange={(e) => setEditingMachine({ ...editingMachine, priceMXN: Number(e.target.value) })}
-                    className="w-full bg-[#181c2b] border border-[#2a3047] rounded-lg px-3 py-2 text-white font-semibold focus:outline-none focus:border-purple-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-semibold focus:bg-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Precio USD</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Precio USD</label>
                   <input
                     type="number"
                     required
                     value={editingMachine.priceUSD}
                     onChange={(e) => setEditingMachine({ ...editingMachine, priceUSD: Number(e.target.value) })}
-                    className="w-full bg-[#181c2b] border border-[#2a3047] rounded-lg px-3 py-2 text-white font-semibold focus:outline-none focus:border-purple-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-semibold focus:bg-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Etiqueta Badge</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Etiqueta Badge</label>
                   <input
                     type="text"
                     value={editingMachine.badge || ''}
                     onChange={(e) => setEditingMachine({ ...editingMachine, badge: e.target.value })}
                     placeholder="Ej. Más Vendida"
-                    className="w-full bg-[#181c2b] border border-[#2a3047] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -357,21 +357,21 @@ export const CatalogoTab: React.FC = () => {
               {/* Technical specs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Capacidad (tortillas/hora)</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Capacidad (tortillas/hora)</label>
                   <input
                     type="number"
                     value={editingMachine.capacityPerHour}
                     onChange={(e) => setEditingMachine({ ...editingMachine, capacityPerHour: Number(e.target.value) })}
                     placeholder="Ej. 1200"
-                    className="w-full bg-[#181c2b] border border-[#2a3047] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Tipo de Energía</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Tipo de Energía</label>
                   <select
                     value={editingMachine.energyType}
                     onChange={(e) => setEditingMachine({ ...editingMachine, energyType: e.target.value as EnergyType })}
-                    className="w-full bg-[#181c2b] border border-[#2a3047] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500"
                   >
                     <option value="Gas LP">Gas LP</option>
                     <option value="Gas Natural">Gas Natural</option>
@@ -390,24 +390,24 @@ export const CatalogoTab: React.FC = () => {
                   id="featuredCheck"
                   checked={!!editingMachine.featured}
                   onChange={(e) => setEditingMachine({ ...editingMachine, featured: e.target.checked })}
-                  className="rounded text-purple-600 focus:ring-purple-500"
+                  className="rounded text-blue-600 focus:ring-blue-500"
                 />
-                <label htmlFor="featuredCheck" className="text-slate-300 cursor-pointer">
+                <label htmlFor="featuredCheck" className="text-slate-700 cursor-pointer font-medium">
                   Mostrar como modelo destacado en la página de inicio
                 </label>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#202538]">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setEditingMachine(null)}
-                  className="px-4 py-2 rounded-lg bg-[#181c2b] hover:bg-[#20263a] text-slate-300 cursor-pointer"
+                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer font-medium"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-lg bg-[#6366f1] hover:bg-[#5255e3] text-white font-semibold shadow-md shadow-indigo-600/20 cursor-pointer"
+                  className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs cursor-pointer"
                 >
                   Guardar en Catálogo
                 </button>

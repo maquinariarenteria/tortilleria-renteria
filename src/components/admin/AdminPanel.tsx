@@ -81,7 +81,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b0d14] text-slate-100 flex flex-col font-sans selection:bg-purple-600 selection:text-white">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
       
       {/* 1. Header with Status Pill and Action Controls */}
       <AdminHeader

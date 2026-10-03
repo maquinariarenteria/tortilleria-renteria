@@ -29,32 +29,29 @@ export const AdminNavbar: React.FC<AdminNavbarProps> = ({
   ];
 
   return (
-    <nav className="bg-[#0b0d14] border-b border-[#1c2033] px-4 md:px-8 overflow-x-auto scrollbar-none select-none">
-      <div className="flex items-center space-x-1 sm:space-x-2 py-1 min-w-max">
+    <nav className="bg-[#1e293b] border-b border-slate-700 px-4 md:px-8 overflow-x-auto scrollbar-none select-none">
+      <div className="flex items-center space-x-1 sm:space-x-2 py-1.5 min-w-max">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`relative px-3 py-2 text-xs md:text-sm font-medium transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              className={`relative px-3.5 py-2 text-xs md:text-sm font-bold tracking-wide transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 rounded-lg ${
                 isActive
-                  ? 'text-white font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#151929]/50 rounded-md'
+                  ? 'bg-[#2563eb] text-white shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
               }`}
             >
               <span>{tab.label}</span>
 
               {/* Notification Badge */}
               {tab.badge !== undefined && tab.badge > 0 && (
-                <span className="flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[10px] font-bold bg-[#6366f1] text-white">
+                <span className={`flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[10px] font-black ${
+                  isActive ? 'bg-white text-[#2563eb]' : 'bg-[#2563eb] text-white'
+                }`}>
                   {tab.badge}
                 </span>
-              )}
-
-              {/* Active Tab Underline Indicator */}
-              {isActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#818cf8] rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]"></span>
               )}
             </button>
           );

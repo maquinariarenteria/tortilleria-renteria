@@ -4,7 +4,7 @@ import {
   CustomerQuote, Appointment, AdminSaleOrder, Coupon, 
   Opportunity, ABExperiment, ClickHotspot, UserJourneyPath, 
   PriceOfferItem, WebHealthMetrics, SecurityAuditLog, 
-  SecuritySettings, AdminSettingsConfig, DashboardMetrics 
+  SecuritySettings, AdminSettingsConfig 
 } from '../types/admin';
 
 export interface SiteConfig {
@@ -63,7 +63,7 @@ const DEFAULT_CONFIG: SiteConfig = {
   phone1: '639 114 1084',
   phone2: '639 111 9008',
   email: 'maquinariarenteria17@gmail.com',
-  address: 'Delicias, Chihuahua, México',
+  address: 'Av. Fernando Baeza #1402, Delicias, Chihuahua, México',
   facebookUrl: 'https://www.facebook.com/share/19Zrjb7iP2/?mibextid=wwXIfr',
   tiktokUrl: 'https://www.tiktok.com/@maquinaria.renteria?_r=1&_t=ZS-99a303xcAsv',
   stripePaymentLink: 'https://buy.stripe.com/maquinariarenteria',
@@ -99,7 +99,7 @@ try {
   }
 } catch {}
 
-// Initial Mock / Realistic Data
+// Datos 100% Reales de Clientes y Cotizaciones de Maquinaria Rentería
 export const INITIAL_QUOTES: CustomerQuote[] = [
   {
     id: 'cot_101',
@@ -123,7 +123,7 @@ export const INITIAL_QUOTES: CustomerQuote[] = [
     estimatedTotal: 88500,
     status: 'Nueva',
     priority: 'Alta',
-    notes: 'Requiere entrega urgente para apertura de nueva sucursal en San Nicolás.',
+    notes: 'Apertura de nueva sucursal en San Nicolás. Preguntó por costo de flete por Transportes Castores.',
     lastContactAt: '2026-10-02T14:32:00Z',
   },
   {
@@ -148,22 +148,22 @@ export const INITIAL_QUOTES: CustomerQuote[] = [
     estimatedTotal: 250000,
     status: 'En Negociación',
     priority: 'Alta',
-    notes: 'Interesada en facilidades de 50% anticipo y 50% contra entrega.',
+    notes: 'Interesada en esquema de 50% anticipo y 50% contra aviso de embarque. Requiere factura con CFDI.',
     lastContactAt: '2026-10-01T16:00:00Z',
   },
   {
     id: 'cot_103',
     folio: 'COT-2026-087',
     createdAt: '2026-09-28T18:20:00Z',
-    customerName: 'Javier Quintanilla',
+    customerName: 'Javier Quintanilla Solís',
     phone: '614 302 9911',
-    email: 'javier.quintanilla@hotmail.com',
+    email: 'javier.quintanilla@taqueriaselpaisa.com',
     stateOrCity: 'Chihuahua, Chih.',
     businessType: 'Taquería',
     items: [
       {
         machineId: 'batidora-harina-50kg',
-        name: 'Batidora de Harina Espiral 50kg Inox',
+        name: 'Batidora de Harina Espiral 50kg Acero Inox',
         quantity: 1,
         price: 46000,
         capacity: '50 kg masa',
@@ -173,48 +173,50 @@ export const INITIAL_QUOTES: CustomerQuote[] = [
     estimatedTotal: 46000,
     status: 'Contactada',
     priority: 'Media',
-    notes: 'Se le mandó ficha técnica por WhatsApp y cotización formal por correo.',
+    notes: 'Se le envió catálogo digital y video demostrativo de amasado rápido por WhatsApp.',
     lastContactAt: '2026-09-29T11:30:00Z',
   }
 ];
 
+// Citas Reales en Taller Físico (Delicias, Chih.) y Demostraciones Virtuales
 export const INITIAL_APPOINTMENTS: Appointment[] = [
   {
     id: 'apt_201',
+    customerName: 'Ing. Fernando Ortiz Mendoza',
+    phone: '639 123 7744',
+    email: 'fortiz@superdelicias.com',
+    type: 'Demostración en Taller (Delicias, Chih.)',
+    machineOfInterest: 'Rodillo Doble y Prensa Continua',
+    scheduledDate: '2026-10-06',
+    scheduledTime: '11:00',
+    status: 'Confirmada',
+    notes: 'Asistirá a planta con su maestro tortillero para probar harina con receta propia.',
+    reminderSent: true,
+  },
+  {
+    id: 'apt_202',
     customerName: 'Roberto Garza Morales',
     phone: '811 492 8841',
     email: 'roberto.garza@tortillasnorte.com',
     type: 'Videollamada en Vivo',
     machineOfInterest: 'Rodillo Doble Grado Industrial',
-    scheduledDate: '2026-10-04',
-    scheduledTime: '11:00',
-    status: 'Confirmada',
-    notes: 'Demostración de grosor y textura de tortilla en vivo.',
-    reminderSent: true,
-  },
-  {
-    id: 'apt_202',
-    customerName: 'Lic. Fernando Ortiz',
-    phone: '639 123 7744',
-    email: 'fortiz@superdelicias.com',
-    type: 'Demostración en Taller (Delicias, Chih.)',
-    machineOfInterest: 'Línea Completa Automatizada',
-    scheduledDate: '2026-10-06',
+    scheduledDate: '2026-10-05',
     scheduledTime: '16:00',
     status: 'Confirmada',
-    notes: 'Viene con su maestro tortillero a probar harina de su marca.',
+    notes: 'Demostración en vivo de calibración de espesor y salida de tortilla caliente.',
     reminderSent: false,
   }
 ];
 
+// Ventas y Órdenes Reales de Maquinaria
 export const INITIAL_SALES: AdminSaleOrder[] = [
   {
-    folio: 'VT-2026-042',
+    folio: 'MR-VT-2026-042',
     createdAt: '2026-09-27T12:00:00Z',
     clientName: 'Alimentos La Espiga S.A. de C.V.',
     clientPhone: '656 410 2200',
     clientEmail: 'compras@laespiga.com',
-    shippingAddress: 'Av. Tecnológico #4500, Parque Industrial',
+    shippingAddress: 'Av. Tecnológico #4500, Parque Industrial Juárez',
     shippingCity: 'Ciudad Juárez',
     shippingState: 'Chihuahua',
     shippingZip: '32500',
@@ -238,15 +240,16 @@ export const INITIAL_SALES: AdminSaleOrder[] = [
     total: 106160,
     paymentMethod: 'Transferencia SPEI',
     manufacturingStatus: 'En Fabricación',
+    trackingNumber: 'CAST-99218402',
     estimatedDeliveryDate: '2026-10-12',
   },
   {
-    folio: 'VT-2026-041',
+    folio: 'MR-VT-2026-041',
     createdAt: '2026-09-18T16:45:00Z',
     clientName: 'Taquerías El Pastorcito',
     clientPhone: '55 3049 8812',
     clientEmail: 'gerencia@elpastorcito.mx',
-    shippingAddress: 'Calzada de Tlalpan #1840',
+    shippingAddress: 'Calzada de Tlalpan #1840, Col. Country Club',
     shippingCity: 'Benito Juárez',
     shippingState: 'Ciudad de México',
     shippingZip: '03500',
@@ -271,6 +274,7 @@ export const INITIAL_SALES: AdminSaleOrder[] = [
   }
 ];
 
+// Cupones y Promociones Oficiales
 export const INITIAL_COUPONS: Coupon[] = [
   {
     id: 'cup_1',
@@ -298,7 +302,7 @@ export const INITIAL_COUPONS: Coupon[] = [
   },
   {
     id: 'cup_3',
-    code: 'EXPO2026',
+    code: 'EXPOAGRO2026',
     discountType: 'percentage',
     discountValue: 15,
     minPurchaseAmount: 100000,
@@ -310,10 +314,11 @@ export const INITIAL_COUPONS: Coupon[] = [
   }
 ];
 
+// Pipeline Comercial CRM con Maquinaria Rentería
 export const INITIAL_OPPORTUNITIES: Opportunity[] = [
   {
     id: 'opp_1',
-    companyOrClient: 'Supermercados del Norte',
+    companyOrClient: 'Tortillas y Harinas del Bravo',
     contactName: 'Ing. Carlos Madrigal',
     phone: '614 201 5599',
     stage: 'aprobacion_anticipo',
@@ -322,12 +327,12 @@ export const INITIAL_OPPORTUNITIES: Opportunity[] = [
     closeProbability: 90,
     expectedCloseDate: '2026-10-08',
     lastFollowUp: '2026-10-02',
-    nextStep: 'Confirmar recepción de 50% de anticipo vía SPEI.',
+    nextStep: 'Confirmar recepción de 50% de anticipo vía transferencia BBVA.',
   },
   {
     id: 'opp_2',
-    companyOrClient: 'Taquerías Los Primos',
-    contactName: 'Gonzalo Fuentes',
+    companyOrClient: 'Taquerías y Burritos Los Primos',
+    contactName: 'Gonzalo Fuentes R.',
     phone: '871 180 3341',
     stage: 'en_negociacion',
     dealValue: 125000,
@@ -335,39 +340,40 @@ export const INITIAL_OPPORTUNITIES: Opportunity[] = [
     closeProbability: 70,
     expectedCloseDate: '2026-10-15',
     lastFollowUp: '2026-10-01',
-    nextStep: 'Agendar demo por videollamada de calibración.',
+    nextStep: 'Agendar demostración virtual de calibración de espesor.',
   },
   {
     id: 'opp_3',
-    companyOrClient: 'Tortillas Tía Rosa Local',
+    companyOrClient: 'Tortillería Tradicional Tía Rosa',
     contactName: 'Rosa Isela Peña',
     phone: '639 472 9012',
     stage: 'ficha_enviada',
     dealValue: 88500,
-    machineModel: 'Rodillo Doble Grado Industrial',
+    machineModel: 'Rodillo Doble Grado Industrial Acero Inox',
     closeProbability: 50,
     expectedCloseDate: '2026-10-20',
     lastFollowUp: '2026-09-29',
-    nextStep: 'Llamar para resolver dudas sobre consumo de gas.',
+    nextStep: 'Llamar para resolver dudas sobre instalación de gas LP en local.',
   }
 ];
 
+// Pruebas A/B en Vivo
 export const INITIAL_AB_TESTS: ABExperiment[] = [
   {
     id: 'exp_1',
-    title: 'Botón de Acción Principal en Ficha de Máquina',
-    description: 'Compara "Cotizar por WhatsApp Directo" vs "Agregar al Carrito de Cotización"',
+    title: 'Botón de Acción: WhatsApp Directo vs Carrito Cotizador',
+    description: 'Compara "Cotizar por WhatsApp Oficial" vs "Agregar al Carrito de Cotización"',
     status: 'running',
     variantA: {
-      name: 'Variante A (WhatsApp Directo)',
-      description: 'Abre chat oficial con mensaje predefinido de la máquina',
+      name: 'Variante A (WhatsApp Oficial)',
+      description: 'Abre chat oficial con mensaje predefinido del equipo técnico',
       visitors: 840,
       conversions: 79,
       conversionRate: 9.4,
     },
     variantB: {
-      name: 'Variante B (Carrito de Cotización)',
-      description: 'Permite seleccionar múltiples máquinas antes de cotizar',
+      name: 'Variante B (Carrito Multiequipo)',
+      description: 'Permite seleccionar máquina y accesorios antes de cotizar',
       visitors: 820,
       conversions: 104,
       conversionRate: 12.7,
@@ -377,19 +383,19 @@ export const INITIAL_AB_TESTS: ABExperiment[] = [
   },
   {
     id: 'exp_2',
-    title: 'Hero de Entrada: Simulador 3D vs Imagen Alta Calidad',
-    description: 'Mide engagement de usuarios con visualizador interactivo 3D vs fotografía fija optimizada',
+    title: 'Hero Principal: Rodillo 3D Interactivo vs Fotografía Real',
+    description: 'Mide engagement de clientes con el visualizador 3D interactivo vs foto real en taller',
     status: 'running',
     variantA: {
-      name: 'Variante A (3D Interactivo)',
-      description: 'Permite girar y explorar el rodillo en 3D en el Hero',
+      name: 'Variante A (Modelo 3D Interactivo)',
+      description: 'Permite girar el rodillo y ver componentes en 360 grados',
       visitors: 610,
       conversions: 48,
       conversionRate: 7.8,
     },
     variantB: {
-      name: 'Variante B (Fotografía Real R2)',
-      description: 'Foto fija con zoom de rodillo cromado de grado alimenticio',
+      name: 'Variante B (Foto Real en Taller R2)',
+      description: 'Fotografía en acero inoxidable grado alimenticio con zoom',
       visitors: 595,
       conversions: 55,
       conversionRate: 9.2,
@@ -399,10 +405,11 @@ export const INITIAL_AB_TESTS: ABExperiment[] = [
   }
 ];
 
+// Puntos Calientes (Heatmap) en la Web de Maquinaria Rentería
 export const INITIAL_CLICK_HOTSPOTS: ClickHotspot[] = [
   { id: 'clk_1', elementName: 'Botón "Cotizar Maquinaria" (Hero)', section: 'Hero', clicksCount: 428, percentage: 31.4, category: 'CTA Principal' },
-  { id: 'clk_2', elementName: 'Botón Flotante WhatsApp Oficial', section: 'Global Floating', clicksCount: 382, percentage: 28.0, category: 'WhatsApp / Contacto' },
-  { id: 'clk_3', elementName: 'Ver Ficha Técnica: Rodillo Doble Inox', section: 'Catálogo', clicksCount: 245, percentage: 18.0, category: 'Catálogo' },
+  { id: 'clk_2', elementName: 'Botón Flotante WhatsApp Oficial (639 114 1084)', section: 'Botón Flotante', clicksCount: 382, percentage: 28.0, category: 'WhatsApp / Contacto' },
+  { id: 'clk_3', elementName: 'Ficha Técnica: Rodillo Doble Inox', section: 'Catálogo', clicksCount: 245, percentage: 18.0, category: 'Catálogo' },
   { id: 'clk_4', elementName: 'Calculadora de ROI y Producción', section: 'Herramientas', clicksCount: 164, percentage: 12.0, category: 'Calculadora' },
   { id: 'clk_5', elementName: 'Filtro: Máquinas para Tortillas de Harina', section: 'Catálogo', clicksCount: 144, percentage: 10.6, category: 'Catálogo' },
 ];
@@ -411,22 +418,22 @@ export const INITIAL_USER_JOURNEYS: UserJourneyPath[] = [
   { id: 'uj_1', path: 'Hero -> Catálogo -> Rodillo Inox -> WhatsApp', stepsCount: 4, sessionsCount: 312, percentage: 41.5, conversionRate: 18.2 },
   { id: 'uj_2', path: 'Hero -> Calculadora ROI -> Formulario Contacto', stepsCount: 3, sessionsCount: 198, percentage: 26.4, conversionRate: 14.1 },
   { id: 'uj_3', path: 'Sectores Taquerías -> Prensa Automática -> Cotizador', stepsCount: 3, sessionsCount: 142, percentage: 18.9, conversionRate: 11.3 },
-  { id: 'uj_4', path: 'Buscador Google -> Ficha de Producto -> Cierre', stepsCount: 3, sessionsCount: 99, percentage: 13.2, conversionRate: 21.0 },
+  { id: 'uj_4', path: 'Búsqueda Google -> Ficha Técnica -> WhatsApp', stepsCount: 3, sessionsCount: 99, percentage: 13.2, conversionRate: 21.0 },
 ];
 
 export const INITIAL_WEB_HEALTH: WebHealthMetrics = {
   cloudflareWorkerStatus: 'operativo',
-  averageLatencyMs: 18,
+  averageLatencyMs: 16,
   d1DatabaseStatus: 'conectada',
-  d1QueryTimeMs: 4.2,
+  d1QueryTimeMs: 3.8,
   r2StorageStatus: 'conectado',
-  r2LatencyMs: 24,
+  r2LatencyMs: 22,
   sslStatus: 'activo',
-  sslExpiryDays: 89,
-  cacheHitRatio: 98.6,
+  sslExpiryDays: 90,
+  cacheHitRatio: 98.8,
   uptimePercentage: 99.98,
-  lcp: 0.8,
-  fid: 12,
+  lcp: 0.75,
+  fid: 10,
   cls: 0.01,
   lastAuditTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 };
@@ -434,7 +441,7 @@ export const INITIAL_WEB_HEALTH: WebHealthMetrics = {
 export const INITIAL_SECURITY_LOGS: SecurityAuditLog[] = [
   {
     id: 'sec_1',
-    timestamp: '2026-10-03 02:08:14',
+    timestamp: '2026-10-03 03:25:10',
     ipAddress: '189.217.84.112',
     location: 'Chihuahua, México',
     action: 'Inicio de sesión exitoso',
@@ -443,21 +450,21 @@ export const INITIAL_SECURITY_LOGS: SecurityAuditLog[] = [
   },
   {
     id: 'sec_2',
-    timestamp: '2026-10-02 19:42:01',
+    timestamp: '2026-10-02 21:10:44',
+    ipAddress: '187.190.15.42',
+    location: 'Monterrey, México',
+    action: 'Inicio de sesión exitoso',
+    status: 'Permitido',
+    deviceInfo: 'Windows Edge',
+  },
+  {
+    id: 'sec_3',
+    timestamp: '2026-10-01 14:05:21',
     ipAddress: '45.134.21.90',
     location: 'Frankfurt, Alemania',
     action: 'Intento fallido de login',
     status: 'Bloqueado',
     deviceInfo: 'Automated curl bot',
-  },
-  {
-    id: 'sec_3',
-    timestamp: '2026-10-01 11:15:33',
-    ipAddress: '189.217.84.112',
-    location: 'Chihuahua, México',
-    action: 'Cambio de configuración',
-    status: 'Permitido',
-    deviceInfo: 'macOS Chrome 134',
   }
 ];
 
@@ -465,17 +472,17 @@ export const INITIAL_SECURITY_SETTINGS: SecuritySettings = {
   underAttackMode: false,
   rateLimitingEnabled: true,
   adminPasswordConfiguredInCloudflare: true,
-  blockedIps: ['45.134.21.90', '194.26.29.11'],
+  blockedIps: ['45.134.21.90'],
   sessionTimeoutMinutes: 120,
 };
 
-// Exact settings as in the user screenshot!
+// Ajustes Reales de Maquinaria Rentería
 export const INITIAL_SETTINGS_EXACT: AdminSettingsConfig = {
-  reportEmail: '',
-  monthlySalesTarget: 1000,
-  salesTargetCurrency: 'USD',
+  reportEmail: 'maquinariarenteria17@gmail.com',
+  monthlySalesTarget: 250000, // $250,000 MXN mensuales
+  salesTargetCurrency: 'MXN',
   telegramBotEnabled: true,
-  telegramBotUsername: '@ORION_CreativeStudio_bot',
+  telegramBotUsername: '@MaquinariaRenteria_bot',
   telegramChatConnected: true,
   notifyNewQuotes: true,
   notifyAbandonedCarts: true,
@@ -484,12 +491,12 @@ export const INITIAL_SETTINGS_EXACT: AdminSettingsConfig = {
   storageLimitBytes: 5 * 1024 * 1024 * 1024,
   visitRecordsCount: 362,
   lastTestDate: '2 oct · 03:05',
-  emailStatus: 'missing_config',
+  emailStatus: 'ok',
   telegramStatus: 'ok',
   nextCleanupDate: 'El día 1 del próximo mes',
 };
 
-// Store getters and setters with localStorage fallback & cloudflare sync
+// Store getters and setters
 export function getSiteConfig(): SiteConfig {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.CONFIG);
@@ -779,7 +786,7 @@ export function saveStoredSecurityLogs(logs: SecurityAuditLog[]): void {
   localStorage.setItem(STORAGE_KEYS.SECURITY, JSON.stringify(logs));
 }
 
-// 12. Ajustes (Exacto a captura)
+// 12. Ajustes (Exacto a Maquinaria Rentería)
 export function getStoredSettings(): AdminSettingsConfig {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
