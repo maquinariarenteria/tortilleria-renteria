@@ -34,11 +34,6 @@ export function App() {
   const [appointmentMachine, setAppointmentMachine] = useState<string>('');
 
   useEffect(() => {
-    // Dismiss splash screen smoothly
-    if (typeof (window as any).mrDismissSplash === 'function') {
-      (window as any).mrDismissSplash();
-    }
-
     // Record site visit for admin metrics
     recordSiteVisit();
 
