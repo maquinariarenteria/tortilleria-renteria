@@ -1,12 +1,30 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "tortilleria-renteria",
+  "main": "src/worker/index.ts",
   "compatibility_date": "2024-09-23",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   },
   "build": {
     "command": "npm run build"
-  }
+  },
+  "vars": {
+    "ENVIRONMENT": "production"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tortilleria-renteria-db",
+      "database_id": "PREVIEW_D1_DATABASE_ID"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "tortilleria-renteria-media"
+    }
+  ]
 }
