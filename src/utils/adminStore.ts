@@ -73,8 +73,8 @@ const DEFAULT_CONFIG: SiteConfig = {
 const STORAGE_KEYS = {
   CONFIG: 'mr_site_config_v1',
   MACHINES: 'mr_machines_catalog_v1',
-  AUTH: 'mr_admin_auth_v1',
-  AUTH_TOKEN: 'mr_admin_token_v1',
+  AUTH: 'mr_admin_cloudflare_auth_v2',
+  AUTH_TOKEN: 'mr_admin_cloudflare_token_v2',
   QUOTES: 'mr_quotes_v2',
   APPOINTMENTS: 'mr_appointments_v1',
   SALES: 'mr_sales_v2',
@@ -87,9 +87,17 @@ const STORAGE_KEYS = {
   SECURITY: 'mr_security_v1',
   SETTINGS: 'mr_settings_exact_v1',
   ANALYTICS: 'mr_real_analytics_v1',
-  LEGACY_ORDERS: 'mr_orders_v1',
-  LEGACY_INQUIRIES: 'mr_inquiries_v1',
 };
+
+// Purge any leftover session or cache from the old administrator
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    localStorage.removeItem('mr_admin_auth_v1');
+    localStorage.removeItem('mr_admin_token_v1');
+    localStorage.removeItem('mr_orders_v1');
+    localStorage.removeItem('mr_inquiries_v1');
+  }
+} catch {}
 
 // Initial Mock / Realistic Data
 export const INITIAL_QUOTES: CustomerQuote[] = [

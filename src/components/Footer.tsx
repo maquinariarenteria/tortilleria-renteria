@@ -1,5 +1,5 @@
 import React from 'react';
-import { Phone, Mail, MapPin, Clock, ShieldCheck, Lock } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, ShieldCheck } from 'lucide-react';
 import { getSiteConfig } from '../utils/adminStore';
 
 export const Footer: React.FC = () => {
@@ -179,15 +179,6 @@ export const Footer: React.FC = () => {
             <span>Hecho en México</span>
             <span>•</span>
             <span>Acero AISI 304 Certificado</span>
-            <span>•</span>
-            <a 
-              href="#admin" 
-              className="text-slate-400 hover:text-white transition flex items-center gap-1 underline underline-offset-4 decoration-slate-600 hover:decoration-white"
-              title="Panel de Administración"
-            >
-              <Lock size={11} className="text-[#2563eb]" />
-              <span>Acceso Admin</span>
-            </a>
           </div>
         </div>
 

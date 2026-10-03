@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getStoredSecurityLogs, INITIAL_SECURITY_SETTINGS } from '../../../utils/adminStore';
+import { getStoredSecurityLogs, INITIAL_SECURITY_SETTINGS, setAdminAuthenticated } from '../../../utils/adminStore';
 import { SecurityAuditLog, SecuritySettings } from '../../../types/admin';
 import { CLOUDFLARE_CONFIG_INFO } from '../../../services/adminService';
 import { Shield, Lock, AlertTriangle, KeyRound, CheckCircle2, UserCheck, Terminal, Ban } from 'lucide-react';
@@ -164,7 +164,7 @@ export const SeguridadTab: React.FC = () => {
             <span>Sesión activa en este navegador</span>
             <button
               onClick={() => {
-                localStorage.removeItem('mr_admin_auth_v1');
+                setAdminAuthenticated(false);
                 window.location.hash = '';
                 window.location.reload();
               }}
