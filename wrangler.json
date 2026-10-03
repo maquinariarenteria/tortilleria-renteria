@@ -11,6 +11,19 @@
   "build": {
     "command": "npm run build"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tortilleria-renteria-db",
+      "database_id": "auto"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "r2-fotos-maquinaria"
+    }
+  ],
   "vars": {
     "ENVIRONMENT": "production"
   }

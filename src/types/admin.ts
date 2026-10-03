@@ -211,22 +211,37 @@ export interface SecuritySettings {
   sessionTimeoutMinutes: number;
 }
 
-// 12. Ajustes (Exacto a la captura)
+// 12. Ajustes y Límites Oficiales de Cloudflare (Plan Gratuito)
+export interface CloudflareResourceLimit {
+  service: string;
+  metricName: string;
+  freeLimit: number | string;
+  freeLimitFormatted: string;
+  currentUsage: number;
+  currentUsageFormatted: string;
+  unit: string;
+  usagePercent: number;
+  status: 'safe' | 'warning' | 'critical';
+  details: string;
+}
+
 export interface AdminSettingsConfig {
   reportEmail: string;
   monthlySalesTarget: number;
   salesTargetCurrency: 'USD' | 'MXN';
-  telegramBotEnabled: boolean;
-  telegramBotUsername: string;
-  telegramChatConnected: boolean;
+  emailService: string; // 'Cloudflare Email Routing (100% Gratis)'
   notifyNewQuotes: boolean;
   notifyAbandonedCarts: boolean;
   notifyAppointments: boolean;
   storageUsedBytes: number;
-  storageLimitBytes: number;
+  storageLimitBytes: number; // 5 GB en D1 = 5 * 1024 * 1024 * 1024
   visitRecordsCount: number;
   lastTestDate: string;
   emailStatus: 'ok' | 'missing_config' | 'error';
-  telegramStatus: 'ok' | 'disconnected' | 'error';
-  nextCleanupDate: string;
+  lastCleanupDate: string;
+  alertThresholdPercent: number; // Por defecto 80%
+  r2StorageUsedBytes: number;
+  r2StorageLimitBytes: number; // 10 GB en R2 = 10 * 1024 * 1024 * 1024
+  dailyRequestsUsed: number;
+  dailyRequestsLimit: number; // 100,000 en Workers
 }
