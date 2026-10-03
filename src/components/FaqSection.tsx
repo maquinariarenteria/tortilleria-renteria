@@ -23,6 +23,10 @@ export const FaqSection: React.FC = () => {
       a: 'Contamos con más de 15 años de experiencia en la fabricación y venta de maquinaria especializada en tortilla de harina en Delicias, Chihuahua, atendiendo a clientes en todo México.',
     },
     {
+      q: '¿CUÁLES SON LAS FORMAS DE PAGO DISPONIBLES?',
+      a: 'Aceptamos pagos con tarjeta de crédito y débito (Visa, Mastercard, American Express) de forma 100% segura con Stripe directamente en la web, transferencias electrónicas interbancarias (SPEI) y anticipo con liquidación previo al flete. Emitimos factura electrónica CFDI (+16% IVA si la requieres).',
+    },
+    {
       q: '¿CÓMO PUEDO COTIZAR O AGENDAR UN PEDIDO?',
       a: 'Puedes comunicarte directamente por teléfono o WhatsApp a los números 639 114 1084 y 639 111 9008, o por correo a maquinariarenteria17@gmail.com.',
     },

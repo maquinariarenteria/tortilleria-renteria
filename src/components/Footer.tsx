@@ -99,8 +99,12 @@ export const Footer: React.FC = () => {
                 <span><strong>Precios:</strong> Todos los precios mostrados son más gastos de envío.</span>
               </li>
               <li className="flex items-start gap-2">
+                <span className="text-blue-400 font-bold">💳</span>
+                <span><strong>Formas de Pago:</strong> Tarjetas de crédito y débito (Visa, Mastercard, AMEX vía Stripe) y transferencia bancaria nacional SPEI.</span>
+              </li>
+              <li className="flex items-start gap-2">
                 <span className="text-emerald-400 font-bold">🛡️</span>
-                <span>Garantía y asesoría técnica directa en cada equipo entregado.</span>
+                <span>Garantía de 1 año y asesoría técnica directa en cada equipo entregado.</span>
               </li>
             </ul>
           </div>

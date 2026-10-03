@@ -73,7 +73,7 @@ const DEFAULT_CONFIG: SiteConfig = {
 
 const STORAGE_KEYS = {
   CONFIG: 'mr_site_config_v2',
-  MACHINES: 'mr_machines_catalog_v2',
+  MACHINES: 'mr_machines_catalog_v3',
   AUTH: 'mr_admin_cloudflare_auth_v2',
   AUTH_TOKEN: 'mr_admin_cloudflare_token_v2',
   QUOTES: 'mr_quotes_real_v3',

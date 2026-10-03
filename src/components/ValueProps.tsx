@@ -52,6 +52,24 @@ export const ValueProps: React.FC = () => {
           ))}
         </div>
 
+        {/* Payment and Assurance Trust Bar */}
+        <div className="mt-8 pt-6 border-t border-slate-800 flex flex-wrap items-center justify-around gap-4 text-xs font-bold text-slate-300">
+          <div className="flex items-center gap-2">
+            <span className="text-base text-blue-400">💳</span>
+            <span>Pagos con Tarjeta de Crédito y Débito (Visa, Mastercard, AMEX)</span>
+          </div>
+          <div className="hidden md:block text-slate-600">•</div>
+          <div className="flex items-center gap-2">
+            <span className="text-base text-emerald-400">🏦</span>
+            <span>Transferencias Directas SPEI</span>
+          </div>
+          <div className="hidden md:block text-slate-600">•</div>
+          <div className="flex items-center gap-2">
+            <span className="text-base text-amber-400">📄</span>
+            <span>Facturación Fiscal CFDI (+16% IVA)</span>
+          </div>
+        </div>
+
       </div>
     </section>
   );

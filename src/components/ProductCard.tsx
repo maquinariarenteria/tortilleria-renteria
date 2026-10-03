@@ -1,13 +1,13 @@
-import React from 'react';
-import { MachineProduct } from '../types';
-import { formatCurrency } from '../utils/formatters';
+import React, { useState } from 'react';
+import { MachineProduct, ProductVariant } from '../types';
+import { formatCurrency, getProductPrice } from '../utils/formatters';
 import { Plus, Check } from 'lucide-react';
 
 interface ProductCardProps {
   machine: MachineProduct;
   currency: 'USD' | 'MXN';
   onSelect: (machine: MachineProduct) => void;
-  onAddToCart: (machine: MachineProduct) => void;
+  onAddToCart: (machine: MachineProduct, variant?: ProductVariant) => void;
   isInCart: boolean;
 }
 
@@ -18,10 +18,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onAddToCart,
   isInCart,
 }) => {
-  const price = currency === 'MXN' ? machine.priceMXN : machine.priceUSD;
+  const [selectedVariantId, setSelectedVariantId] = useState<string>(() => {
+    return machine.variants && machine.variants.length > 0 ? machine.variants[0].id : '';
+  });
+  const [addedJustNow, setAddedJustNow] = useState(false);
+
+  const selectedVariant = machine.variants?.find((v) => v.id === selectedVariantId) || machine.variants?.[0];
+  const price = getProductPrice(machine, selectedVariant, currency);
+
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAddToCart(machine, selectedVariant);
+    setAddedJustNow(true);
+    setTimeout(() => setAddedJustNow(false), 1500);
+  };
 
   return (
-    <div className="flat-card rounded-xl p-3.5 flex flex-col justify-between">
+    <div className="flat-card rounded-xl p-3.5 flex flex-col justify-between group hover:border-[#2563eb]">
       <div>
         <div
           onClick={() => onSelect(machine)}
@@ -56,25 +69,52 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {machine.name}
           </h4>
 
-          <div className="mt-1 text-sm font-mono font-black text-[#2563eb]">
+          {/* Quick variant selector if machine has variants */}
+          {machine.variants && machine.variants.length > 0 && (
+            <div className="mt-1.5">
+              <select
+                value={selectedVariantId}
+                onChange={(e) => setSelectedVariantId(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full text-[10px] font-bold py-1 px-1.5 rounded-md border border-slate-300 bg-slate-50 focus:border-[#2563eb] text-slate-800 cursor-pointer"
+              >
+                {machine.variants.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name.replace('Medida ', '').replace('Capacidad ', '')}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="mt-1.5 text-sm font-mono font-black text-[#2563eb]">
             {formatCurrency(price, currency)}
           </div>
 
           <div className="text-[10px] text-slate-400 font-medium mt-0.5">
-            Sobre pedido • + Envío
+            Sobre pedido • + Envío a acordar
           </div>
         </div>
       </div>
 
       <div className="mt-3 space-y-1.5">
         <button
-          onClick={() => onAddToCart(machine)}
-          className="w-full btn-flat-primary py-2 rounded-lg font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 shadow-xs"
+          onClick={handleAdd}
+          className={`w-full py-2 rounded-lg font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 shadow-xs transition active:scale-95 cursor-pointer ${
+            addedJustNow || isInCart
+              ? 'bg-emerald-600 text-white'
+              : 'btn-flat-primary'
+          }`}
         >
-          {isInCart ? (
+          {addedJustNow ? (
             <>
               <Check size={13} />
-              EN CARRITO
+              ¡AGREGADO!
+            </>
+          ) : isInCart ? (
+            <>
+              <Check size={13} />
+              EN CARRITO (+)
             </>
           ) : (
             <>
@@ -86,7 +126,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         <button
           onClick={() => onSelect(machine)}
-          className="w-full py-1 text-[10px] font-bold uppercase text-slate-500 hover:text-[#2563eb] transition-colors text-center"
+          className="w-full py-1 text-[10px] font-bold uppercase text-slate-500 hover:text-[#2563eb] transition-colors text-center cursor-pointer"
         >
           Ver Detalles
         </button>

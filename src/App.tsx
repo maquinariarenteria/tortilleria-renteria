@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { MachineProduct, CartItem } from './types';
+import { MachineProduct, CartItem, ProductVariant } from './types';
 import { getStoredMachines, recordSiteVisit } from './utils/adminStore';
+import { getProductPrice } from './utils/formatters';
 import { AdminPanel } from './components/admin/AdminPanel';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
@@ -69,26 +70,41 @@ export function App() {
     );
   }
 
-  const handleAddToCart = (machine: MachineProduct) => {
+  const handleAddToCart = (machine: MachineProduct, variant?: ProductVariant) => {
+    const unitPriceMXN = getProductPrice(machine, variant, 'MXN');
+    const unitPriceUSD = getProductPrice(machine, variant, 'USD');
+    const itemId = variant ? `${machine.id}__${variant.id}` : machine.id;
+
     setCart((prev) => {
-      const existing = prev.find((item) => item.machine.id === machine.id);
+      const existing = prev.find((item) => item.id === itemId);
       if (existing) {
         return prev.map((item) =>
-          item.machine.id === machine.id
+          item.id === itemId
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
-      return [...prev, { machine, quantity: 1, selectedEnergy: machine.energyType }];
+      return [
+        ...prev,
+        {
+          id: itemId,
+          machine,
+          quantity: 1,
+          selectedEnergy: machine.energyType,
+          selectedVariant: variant,
+          unitPriceMXN,
+          unitPriceUSD,
+        },
+      ];
     });
     setIsCartOpen(true);
   };
 
-  const handleUpdateQuantity = (machineId: string, delta: number) => {
+  const handleUpdateQuantity = (itemId: string, delta: number) => {
     setCart((prev) => {
       return prev
         .map((item) => {
-          if (item.machine.id === machineId) {
+          if (item.id === itemId) {
             const newQty = item.quantity + delta;
             return newQty > 0 ? { ...item, quantity: newQty } : null;
           }
@@ -98,8 +114,8 @@ export function App() {
     });
   };
 
-  const handleRemoveItem = (machineId: string) => {
-    setCart((prev) => prev.filter((item) => item.machine.id !== machineId));
+  const handleRemoveItem = (itemId: string) => {
+    setCart((prev) => prev.filter((item) => item.id !== itemId));
   };
 
   const handleClearCart = () => {

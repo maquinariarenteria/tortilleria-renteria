@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { MachineProduct } from '../types';
+import { MachineProduct, ProductVariant } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { Plus, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ScrollReveal } from './ScrollReveal';
@@ -8,7 +8,7 @@ interface FeaturedMachinesProps {
   machines: MachineProduct[];
   currency: 'USD' | 'MXN';
   onSelectMachine: (machine: MachineProduct) => void;
-  onAddToCart: (machine: MachineProduct) => void;
+  onAddToCart: (machine: MachineProduct, variant?: ProductVariant) => void;
   cartMachineIds: string[];
 }
 
@@ -140,21 +140,21 @@ export const FeaturedMachines: React.FC<FeaturedMachinesProps> = ({
                     <div className="mt-4 space-y-2">
                       <button
                         onClick={() => onSelectMachine(machine)}
-                        className="w-full btn-flat-primary py-2 sm:py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider shadow-xs"
+                        className="w-full btn-flat-primary py-2 sm:py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider shadow-xs active:scale-95 transition cursor-pointer"
                       >
                         VER DETALLES
                       </button>
 
                       <button
                         onClick={() => onAddToCart(machine)}
-                        className={`w-full py-2 rounded-lg text-xs font-semibold uppercase transition flex items-center justify-center gap-1.5 border ${
+                        className={`w-full py-2 rounded-lg text-xs font-semibold uppercase transition flex items-center justify-center gap-1.5 border active:scale-95 cursor-pointer ${
                           isInCart
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
                             : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
                         }`}
                       >
                         {isInCart ? <Check size={14} /> : <Plus size={14} />}
-                        {isInCart ? 'En Carrito' : 'Agregar al Carrito'}
+                        {isInCart ? 'En Carrito (+)' : 'Agregar al Carrito'}
                       </button>
                     </div>
                   </div>

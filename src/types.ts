@@ -20,6 +20,18 @@ export type EnergyType =
 
 export type Model3DType = 'press' | 'line' | 'oven' | 'mixer' | 'rotary' | 'cooler';
 
+export interface ProductVariant {
+  id: string;
+  name: string;
+  extraPriceMXN: number;
+  extraPriceUSD: number;
+  fixedPriceMXN?: number;
+  fixedPriceUSD?: number;
+  diameterRange?: string;
+  capacityText?: string;
+  description?: string;
+}
+
 export interface MachineProduct {
   id: string;
   name: string;
@@ -46,13 +58,18 @@ export interface MachineProduct {
     value: string;
   }[];
   imageUrl?: string;
+  variants?: ProductVariant[];
 }
 
 export interface CartItem {
+  id: string;
   machine: MachineProduct;
   quantity: number;
   customNotes?: string;
   selectedEnergy?: EnergyType;
+  selectedVariant?: ProductVariant;
+  unitPriceMXN: number;
+  unitPriceUSD: number;
 }
 
 export interface FilterState {
@@ -63,3 +80,4 @@ export interface FilterState {
   energyType: string; // 'all' or specific
   sortBy: 'popular' | 'price-asc' | 'price-desc' | 'capacity-desc';
 }
+

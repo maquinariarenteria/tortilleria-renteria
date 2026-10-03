@@ -1,4 +1,64 @@
-import { MachineProduct } from '../types';
+import { MachineProduct, ProductVariant } from '../types';
+
+export const PRESS_VARIANTS: ProductVariant[] = [
+  {
+    id: 'prensa-estandar',
+    name: 'Medida Estándar (10 a 28 cm)',
+    extraPriceMXN: 0,
+    extraPriceUSD: 0,
+    diameterRange: '10 cm - 28 cm',
+    description: 'Placas térmicas estándar para tortillas con diámetro ajustable de 10 cm a 28 cm.',
+  },
+  {
+    id: 'prensa-14in',
+    name: 'Medida 14 Pulgadas (10 a 32 cm)',
+    extraPriceMXN: 2500,
+    extraPriceUSD: 140,
+    diameterRange: '10 cm - 32 cm',
+    description: 'Placas térmicas de 14 pulgadas (+ $2,500 MXN). Amplía el diámetro de la tortilla desde 10 cm hasta 32 cm.',
+  },
+  {
+    id: 'prensa-16in',
+    name: 'Medida 16 Pulgadas (10 a 38 cm)',
+    extraPriceMXN: 5000,
+    extraPriceUSD: 280,
+    diameterRange: '10 cm - 38 cm',
+    description: 'Placas térmicas de 16 pulgadas (+ $5,000 MXN). Amplía el diámetro de la tortilla desde 10 cm hasta 38 cm.',
+  },
+];
+
+export const MIXER_VARIANTS: ProductVariant[] = [
+  {
+    id: 'amasadora-25kg',
+    name: 'Capacidad 25 kg de harina',
+    extraPriceMXN: 0,
+    extraPriceUSD: 0,
+    fixedPriceMXN: 18500,
+    fixedPriceUSD: 1030,
+    capacityText: '5 kg a 25 kg de harina en polvo (más de 40 kg de masa)',
+    description: 'Capacidad base de 25 kg de harina en polvo con motor 110V estándar en $18,500 MXN.',
+  },
+  {
+    id: 'amasadora-50kg',
+    name: 'Capacidad 50 kg de harina',
+    extraPriceMXN: 5500,
+    extraPriceUSD: 305,
+    fixedPriceMXN: 24000,
+    fixedPriceUSD: 1335,
+    capacityText: '10 kg a 50 kg de harina en polvo (más de 80 kg de masa)',
+    description: 'Variante de capacidad de 50 kg de harina en $24,000 MXN.',
+  },
+  {
+    id: 'amasadora-100kg',
+    name: 'Capacidad 100 kg de harina',
+    extraPriceMXN: 9500,
+    extraPriceUSD: 525,
+    fixedPriceMXN: 28000,
+    fixedPriceUSD: 1555,
+    capacityText: '20 kg a 100 kg de harina en polvo (más de 160 kg de masa)',
+    description: 'Variante de capacidad de 100 kg de harina en $28,000 MXN.',
+  },
+];
 
 export const MACHINES_DATA: MachineProduct[] = [
   {
@@ -19,23 +79,24 @@ export const MACHINES_DATA: MachineProduct[] = [
     warrantyYears: 1,
     featured: true,
     badge: 'MÁS POPULAR CON COMAL',
-    shortDescription: 'Prensa manual de tortilla de harina con comal integrado para cocer y dorar al instante.',
-    fullDescription: 'Equipo versátil 2 en 1 que integra prensa caliente de alto formado y comal contiguo para terminar la cocción. Permite regular milimétricamente el grosor de la tortilla desde 10 cm hasta 28 cm de diámetro con una producción estimada de 18 piezas por minuto.',
+    shortDescription: 'Prensa manual de tortillas de harina con comal integrado para cocer y extender al instante',
+    fullDescription: 'Prensa manual de tortillas de harina con comal integrado para cocer y extender al instante. Permite regular milimétricamente el grosor de la tortilla desde 10 cm hasta 28 cm de diámetro (o hasta 32 cm y 38 cm con variantes de 14 y 16 pulgadas) con una producción estimada de 18 piezas por minuto.',
     features: [
-      'Comal integrado de alta retención térmica para cocción inmediata',
-      'Grosor de tortilla totalmente ajustable (10 cm a 28 cm)',
+      'Prensa manual de tortillas de harina con comal integrado para cocer y extender al instante',
+      'Grosor de tortilla totalmente ajustable (10 cm a 28 cm, 32 cm o 38 cm)',
       'Producción de aprox. 18 tortillas por minuto',
       'Estructura de acero reforzado con placas térmicas maquinadas',
       'Tortilla precocida suave y elástica sin romperse'
     ],
     specs: [
       { label: 'Producción', value: '~18 tortillas/minuto (1,080/h)' },
-      { label: 'Diámetro', value: '10 cm a 28 cm ajustable' },
+      { label: 'Diámetro', value: '10 cm a 28 cm (ampliable a 32cm y 38cm)' },
       { label: 'Operación', value: 'Mecánica manual asistida con comal contiguo' },
       { label: 'Combustible', value: 'Gas LP de alta eficiencia (Sin electricidad)' },
       { label: 'Condición', value: 'Sobre pedido (+ envío • +16% IVA si requiere factura)' }
     ],
-    imageUrl: '/images/01_prensa_comal.jpg'
+    imageUrl: '/images/01_prensa_comal.jpg',
+    variants: PRESS_VARIANTS,
   },
   {
     id: 'prensa-manual',
@@ -55,23 +116,24 @@ export const MACHINES_DATA: MachineProduct[] = [
     warrantyYears: 1,
     featured: true,
     badge: 'NUEVA FOTO OFICIAL',
-    shortDescription: 'Prensa manual compacta con regulación de grosor de 10 a 28 cm y aprox. 18 tortillas/min.',
-    fullDescription: 'La opción ideal y accesible para tortillerías, taquerías y negocios que buscan tortilla precocida de calidad artesanal uniforme. Su palanca compensada minimiza la fatiga del operario garantizando tortillas redondas perfectas sin necesidad de energía eléctrica.',
+    shortDescription: 'Prensa manual compacta con regulación de grosor y diámetro de 10 a 28 cm y aprox. 18 tortillas/ min',
+    fullDescription: 'Prensa manual compacta con regulación de grosor y diámetro de 10 a 28 cm y aprox. 18 tortillas/ min. La opción ideal y accesible para tortillerías, taquerías y negocios que buscan tortilla precocida de calidad artesanal uniforme. Su palanca compensada minimiza la fatiga del operario garantizando tortillas redondas perfectas sin necesidad de energía eléctrica.',
     features: [
-      'Ajuste preciso de grosor para todo tipo de tortilla de harina',
-      'Rango de diámetro de 10 cm a 28 cm',
-      'Ritmo de trabajo de hasta 18 tortillas por minuto',
+      'Prensa manual compacta con regulación de grosor y diámetro de 10 a 28 cm y aprox. 18 tortillas/ min',
+      'Opciones de placas de 14 pulgadas (hasta 32 cm) y 16 pulgadas (hasta 38 cm)',
       'Tortilla precocida con consistencia suave y flexible',
-      'Operación 100% mecánica manual con calentamiento a Gas LP'
+      'Operación 100% mecánica manual con calentamiento a Gas LP',
+      'Acero reforzado con placas térmicas de uso rudo'
     ],
     specs: [
       { label: 'Producción', value: '~18 tortillas/minuto' },
-      { label: 'Rango Diámetro', value: '10 cm a 28 cm' },
+      { label: 'Rango Diámetro', value: '10 cm a 28 cm (ajustable hasta 38 cm con variantes)' },
       { label: 'Operación', value: 'Palanca manual ergonómica' },
       { label: 'Calentamiento', value: 'Gas LP (No requiere corriente eléctrica)' },
       { label: 'Condición', value: 'Sobre pedido (+ envío • +16% IVA si requiere factura)' }
     ],
-    imageUrl: '/images/02_prensa_manual.png'
+    imageUrl: '/images/02_prensa_manual.png',
+    variants: PRESS_VARIANTS,
   },
   {
     id: 'cortadora-manual-36',
@@ -123,23 +185,24 @@ export const MACHINES_DATA: MachineProduct[] = [
     weightKg: 95,
     warrantyYears: 1,
     featured: true,
-    badge: 'MOTOR 110V ESTÁNDAR',
-    shortDescription: 'Amasa de 5kg a 25kg de harina en polvo, tazón en acero inoxidable y motor 110V.',
-    fullDescription: 'Diseñada específicamente para la consistencia exigente de la masa para tortilla de harina con manteca. Amasa desde 5 kg hasta 25 kg de harina en polvo (más de 40 kg de masa preparada) logrando una textura elástica, suave y sin calentar los ingredientes. Conexión estándar a 110V.',
+    badge: 'VARIANTES 25KG, 50KG Y 100KG',
+    shortDescription: 'Amasadora industrial disponible en 25kg ($18,500), 50kg ($24,000) y 100kg ($28,000). Tazón en acero inoxidable y motor 110V.',
+    fullDescription: 'Diseñada específicamente para la consistencia exigente de la masa para tortilla de harina con manteca. Disponible en capacidad base de 25 kg ($18,500 MXN), variante de 50 kg ($24,000 MXN) y variante de 100 kg ($28,000 MXN). Tazón y aspas de amasado forjados en acero inoxidable grado alimenticio con conexión estándar a 110V.',
     features: [
-      'Capacidad flexible: desde 5kg hasta 25kg de harina en polvo',
+      'Capacidad a elegir: 25 kg ($18,500), 50 kg ($24,000) o 100 kg ($28,000)',
       'Tazón y aspas de amasado forjados en acero inoxidable',
       'Motor eléctrico estándar a 110V de fácil conexión en cualquier toma doméstica o taller',
       'Transmisión reforzada por banda y engranes para trabajo rudo',
       'Mezclado homogéneo rápido en menos de 10 minutos'
     ],
     specs: [
-      { label: 'Capacidad de Harina', value: '5 kg a 25 kg de harina en polvo' },
+      { label: 'Capacidad', value: '25 kg ($18.5k) • 50 kg ($24k) • 100 kg ($28k)' },
       { label: 'Voltaje de Trabajo', value: '110V Monofásica estándar (No 220V)' },
       { label: 'Tazón y aspas', value: 'Acero Inoxidable Grado Alimenticio' },
       { label: 'Condición', value: 'Sobre pedido (+ envío • +16% IVA si requiere factura)' }
     ],
-    imageUrl: '/images/04_amasadora_25kg.jpg'
+    imageUrl: '/images/04_amasadora_25kg.jpg',
+    variants: MIXER_VARIANTS,
   },
   {
     id: 'boleadora-automatica',
@@ -193,23 +256,24 @@ export const MACHINES_DATA: MachineProduct[] = [
     warrantyYears: 1,
     featured: false,
     badge: 'NUEVA FOTO OFICIAL (PRECOCIDA)',
-    shortDescription: 'Prensa automatizada de 23 tortillas/min con grosor graduable de 10 a 28 cm.',
-    fullDescription: 'Diseñada para alta demanda de tortilla precocida con menor esfuerzo físico. Cuenta con sistema motorizado a 110V que acciona el ciclo de prensado a un ritmo constante de 23 tortillas por minuto, entregando tortilla precocida con grosor milimétrico y sellado térmico ideal.',
+    shortDescription: 'Prensa automática para tortilla de harina completa, graduable y diámetro de 10 a 28 cm junto con ritmo de 23 tortillas/min.',
+    fullDescription: 'Prensa automática para tortilla de harina completa, graduable y diámetro de 10 a 28 cm. Diseñada para alta demanda de tortilla precocida con menor esfuerzo físico. Cuenta con sistema motorizado a 110V que acciona el ciclo de prensado a un ritmo constante de 23 tortillas por minuto, entregando tortilla precocida con grosor milimétrico y sellado térmico ideal.',
     features: [
+      'Prensa automática para tortilla de harina completa, graduable y diámetro de 10 a 28 cm',
       'Producción acelerada de 23 tortillas por minuto continuas',
-      'Rango amplio de diámetro de 10 cm a 28 cm',
-      'Regulación fácil del grosor de la tortilla según la receta deseada',
+      'Opciones de platos térmicos de 14" (hasta 32 cm) y 16" (hasta 38 cm)',
       'Placas calefactoras con quemador a gas y control de flama',
       'Motorreductor eléctrico 110V y chasis industrial con rodamientos reforzados'
     ],
     specs: [
       { label: 'Producción', value: '23 tortillas/minuto (1,380/h)' },
-      { label: 'Diámetro', value: '10 cm a 28 cm graduable' },
+      { label: 'Diámetro', value: 'Graduable y diámetro de 10 a 28 cm (ampliable a 32cm y 38cm)' },
       { label: 'Accionamiento', value: 'Motorreductor 110V automático' },
       { label: 'Calentamiento', value: 'Gas LP de alta eficiencia' },
       { label: 'Condición', value: 'Sobre pedido (+ envío • +16% IVA si requiere factura)' }
     ],
-    imageUrl: '/images/06_prensa_automatica.png'
+    imageUrl: '/images/06_prensa_automatica.png',
+    variants: PRESS_VARIANTS,
   },
   {
     id: 'prensa-plana-manual',
@@ -233,19 +297,20 @@ export const MACHINES_DATA: MachineProduct[] = [
     fullDescription: 'Estructura horizontal clásica con palanca de contra-tiro para prensado plano homogéneo. Ideal para quienes prefieren la distribución de calor horizontal y un manejo simple y seguro para producir tortillas artesanales de trigo sin consumir electricidad.',
     features: [
       'Planchas térmicas planas rectificadas para presión uniforme',
-      'Diámetro graduable desde 10 cm hasta 28 cm',
+      'Diámetro graduable desde 10 cm hasta 28 cm (o 32 cm y 38 cm con variantes)',
       'Ritmo aproximado de 15 piezas por minuto',
       'Mangueras de gas con regulador y conexiones de seguridad',
       'Patas reforzadas con travesaño de estabilidad antivibración'
     ],
     specs: [
       { label: 'Producción', value: '~15 tortillas/minuto (900/h)' },
-      { label: 'Diámetro', value: '10 cm a 28 cm' },
+      { label: 'Diámetro', value: '10 cm a 28 cm (ampliable con variantes)' },
       { label: 'Operación', value: 'Manual de palanca (Sin motor eléctrico)' },
       { label: 'Combustible', value: 'Gas LP' },
       { label: 'Condición', value: 'Sobre pedido (+ envío • +16% IVA si requiere factura)' }
     ],
-    imageUrl: '/images/07_prensa_plana.jpg'
+    imageUrl: '/images/07_prensa_plana.jpg',
+    variants: PRESS_VARIANTS,
   },
   {
     id: 'cortadora-automatica-tolva',

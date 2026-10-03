@@ -136,7 +136,7 @@ export const ContactSection: React.FC = () => {
                     <CreditCard size={16} className="text-[#2563eb] shrink-0 mt-0.5" />
                     <div>
                       <span className="font-bold text-slate-900">Formas de Pago: </span>
-                      <span>Transferencia bancaria SPEI, tarjeta en línea (Stripe) y facturación CFDI.</span>
+                      <span>Pagos con tarjeta de crédito y débito (Visa, Mastercard, American Express vía Stripe), transferencia bancaria nacional SPEI y facturación fiscal CFDI (+16% IVA).</span>
                     </div>
                   </div>
 

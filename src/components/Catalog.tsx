@@ -1,15 +1,15 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { MachineProduct } from '../types';
+import { MachineProduct, ProductVariant } from '../types';
 import { ProductCard } from './ProductCard';
 import { formatCurrency } from '../utils/formatters';
-import { Plus, Check, ChevronLeft, ChevronRight, Grid, Layers, SlidersHorizontal, ArrowRight } from 'lucide-react';
+import { Plus, Check, ChevronLeft, ChevronRight, Grid, Layers, SlidersHorizontal, ArrowRight, CreditCard } from 'lucide-react';
 import { ScrollReveal } from './ScrollReveal';
 
 interface CatalogProps {
   machines: MachineProduct[];
   currency: 'USD' | 'MXN';
   onSelectMachine: (machine: MachineProduct) => void;
-  onAddToCart: (machine: MachineProduct) => void;
+  onAddToCart: (machine: MachineProduct, variant?: ProductVariant) => void;
   cartMachineIds: string[];
 }
 
@@ -58,7 +58,7 @@ export const Catalog: React.FC<CatalogProps> = ({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
-        {/* 3 Crucial Business Terms requested by user */}
+        {/* 4 Crucial Business Terms requested by user */}
         <div className="bg-blue-50/90 border border-blue-200 rounded-xl p-3 sm:p-4 flex flex-wrap items-center justify-around gap-2.5 text-xs font-bold text-slate-800 shadow-xs">
           <div className="flex items-center gap-2 text-slate-900">
             <span className="text-base">🚚</span>
@@ -72,7 +72,12 @@ export const Catalog: React.FC<CatalogProps> = ({
           <div className="hidden md:block text-slate-300">•</div>
           <div className="flex items-center gap-2 text-slate-900">
             <span className="text-base">🏷️</span>
-            <span>Precios más envío (+16% IVA en caso de factura)</span>
+            <span>Precios más flete (+16% IVA si requiere factura)</span>
+          </div>
+          <div className="hidden md:block text-slate-300">•</div>
+          <div className="flex items-center gap-2 text-slate-900">
+            <span className="text-base">💳</span>
+            <span>Pagos con tarjeta (Crédito / Débito) y SPEI</span>
           </div>
         </div>
 
@@ -303,7 +308,7 @@ function ProductSectionRow({
   machines: MachineProduct[];
   currency: 'USD' | 'MXN';
   onSelectMachine: (m: MachineProduct) => void;
-  onAddToCart: (m: MachineProduct) => void;
+  onAddToCart: (m: MachineProduct, variant?: ProductVariant) => void;
   cartMachineIds: string[];
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
@@ -344,7 +349,7 @@ function ProductSectionRow({
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => scroll('left')}
-              className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-[#2563eb] hover:text-white hover:border-[#2563eb] text-slate-700 transition active:scale-95 shadow-xs"
+              className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-[#2563eb] hover:text-white hover:border-[#2563eb] text-slate-700 transition active:scale-95 shadow-xs cursor-pointer"
               title="Desplazar hacia la izquierda"
               aria-label="Desplazar a la izquierda"
             >
@@ -353,7 +358,7 @@ function ProductSectionRow({
 
             <button
               onClick={() => scroll('right')}
-              className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-[#2563eb] hover:text-white hover:border-[#2563eb] text-slate-700 transition active:scale-95 shadow-xs"
+              className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-[#2563eb] hover:text-white hover:border-[#2563eb] text-slate-700 transition active:scale-95 shadow-xs cursor-pointer"
               title="Desplazar hacia la derecha"
               aria-label="Desplazar a la derecha"
             >
@@ -370,86 +375,19 @@ function ProductSectionRow({
       >
         {machines.map((machine) => {
           const isInCart = cartMachineIds.includes(machine.id);
-          const price = currency === 'MXN' ? machine.priceMXN : machine.priceUSD;
 
           return (
             <div
               key={machine.id}
-              className="w-[270px] sm:w-[310px] md:w-[320px] shrink-0 snap-start flat-card rounded-xl p-4 flex flex-col justify-between group hover:border-[#2563eb]"
+              className="w-[270px] sm:w-[310px] md:w-[320px] shrink-0 snap-start"
             >
-              <div>
-                {/* Catalog Image */}
-                <div
-                  onClick={() => onSelectMachine(machine)}
-                  className="w-full h-44 sm:h-48 bg-white rounded-lg border border-slate-200 flex items-center justify-center p-3 cursor-pointer hover:border-[#2563eb] transition-all relative overflow-hidden group/img"
-                >
-                  {machine.imageUrl ? (
-                    <img
-                      src={machine.imageUrl}
-                      alt={machine.name}
-                      loading="lazy"
-                      className="w-full h-full object-contain object-center transition-transform duration-300 group-hover/img:scale-105"
-                    />
-                  ) : (
-                    <span className="text-xs font-mono text-slate-400">
-                      [{machine.sku}]
-                    </span>
-                  )}
-
-                  {machine.badge && (
-                    <span className="absolute top-2 left-2 text-[8px] sm:text-[9px] font-extrabold bg-[#2563eb] text-white px-2 py-0.5 rounded shadow-xs uppercase tracking-wider">
-                      {machine.badge}
-                    </span>
-                  )}
-
-                  <span className="absolute bottom-2 right-2 text-[10px] font-bold bg-slate-900/85 backdrop-blur-xs px-2 py-0.5 rounded text-white font-mono">
-                    {machine.capacityPerHour.toLocaleString()} tort/h
-                  </span>
-                </div>
-
-                {/* Machine Details */}
-                <div className="mt-3 text-left">
-                  <h4
-                    onClick={() => onSelectMachine(machine)}
-                    className="text-xs sm:text-sm font-bold text-slate-900 uppercase cursor-pointer hover:text-[#2563eb] transition-colors line-clamp-1"
-                    title={machine.name}
-                  >
-                    {machine.name}
-                  </h4>
-
-                  <div className="mt-1 flex items-baseline justify-between gap-2">
-                    <span className="text-base sm:text-lg font-mono font-black text-[#2563eb]">
-                      {formatCurrency(price, currency)}
-                    </span>
-                    <span className="text-[10px] font-semibold text-slate-500 uppercase bg-slate-100 px-1.5 py-0.5 rounded">
-                      {machine.energyType}
-                    </span>
-                  </div>
-
-                  <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500 font-medium">
-                    <span>Sobre pedido</span>
-                    <span>+ Envío e IVA</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="mt-4 flex gap-2">
-                <button
-                  onClick={() => onAddToCart(machine)}
-                  className="flex-1 btn-flat-primary py-2 rounded-lg font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 shadow-xs"
-                >
-                  {isInCart ? <Check size={13} /> : <Plus size={13} />}
-                  {isInCart ? 'En Carrito' : 'Agregar'}
-                </button>
-
-                <button
-                  onClick={() => onSelectMachine(machine)}
-                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold uppercase transition"
-                >
-                  Detalles
-                </button>
-              </div>
+              <ProductCard
+                machine={machine}
+                currency={currency}
+                onSelect={onSelectMachine}
+                onAddToCart={onAddToCart}
+                isInCart={isInCart}
+              />
             </div>
           );
         })}
@@ -473,7 +411,7 @@ function CollageItem({
   machine: MachineProduct;
   currency: 'USD' | 'MXN';
   onSelect: (m: MachineProduct) => void;
-  onAddToCart: (m: MachineProduct) => void;
+  onAddToCart: (m: MachineProduct, variant?: ProductVariant) => void;
   isInCart: boolean;
   size?: 'large' | 'tall' | 'medium';
 }) {
@@ -537,15 +475,15 @@ function CollageItem({
       <div className="mt-3 flex gap-2">
         <button
           onClick={() => onAddToCart(machine)}
-          className="flex-1 btn-flat-primary py-2 rounded-lg font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 shadow-xs"
+          className="flex-1 btn-flat-primary py-2 rounded-lg font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 shadow-xs active:scale-95 transition cursor-pointer"
         >
           {isInCart ? <Check size={13} /> : <Plus size={13} />}
-          {isInCart ? 'En Carrito' : 'Agregar'}
+          {isInCart ? 'En Carrito (+)' : 'Agregar'}
         </button>
 
         <button
           onClick={() => onSelect(machine)}
-          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold uppercase transition"
+          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold uppercase transition active:scale-95 cursor-pointer"
         >
           Detalles
         </button>

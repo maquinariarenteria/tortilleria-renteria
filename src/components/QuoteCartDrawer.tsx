@@ -6,7 +6,7 @@ import { getSiteConfig, recordHotspotClick } from '../utils/adminStore';
 import { AdminSaleOrder } from '../types/admin';
 import { 
   X, Trash2, Plus, Minus, MessageCircle, ShoppingBag, 
-  CreditCard, CheckCircle2, Truck, AlertTriangle, ArrowRight, ShieldCheck, ExternalLink
+  CreditCard, CheckCircle2, Truck, AlertTriangle, ArrowRight, ShieldCheck, Lock
 } from 'lucide-react';
 
 interface QuoteCartDrawerProps {
@@ -14,8 +14,8 @@ interface QuoteCartDrawerProps {
   onClose: () => void;
   items: CartItem[];
   currency: 'USD' | 'MXN';
-  onUpdateQuantity: (machineId: string, delta: number) => void;
-  onRemoveItem: (machineId: string) => void;
+  onUpdateQuantity: (itemId: string, delta: number) => void;
+  onRemoveItem: (itemId: string) => void;
   onClearCart: () => void;
 }
 
@@ -30,7 +30,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
 }) => {
   const config = getSiteConfig();
 
-  // Customer Details Form (All required as requested)
+  // Customer Details Form
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
@@ -47,7 +47,8 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
   // Checkout states
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [orderConfirmedWhatsApp, setOrderConfirmedWhatsApp] = useState<AdminSaleOrder | null>(null);
+  const [invalidField, setInvalidField] = useState<string>('');
+  const [, setOrderConfirmedWhatsApp] = useState<AdminSaleOrder | null>(null);
   const [stripePaymentConfirmed, setStripePaymentConfirmed] = useState<AdminSaleOrder | null>(null);
 
   // Stripe Online Payment Modal inside drawer
@@ -70,8 +71,8 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
   // Calculations
   const subtotal = useMemo(() => {
     return items.reduce((acc, item) => {
-      const price = currency === 'MXN' ? item.machine.priceMXN : item.machine.priceUSD;
-      return acc + price * item.quantity;
+      const unitPrice = currency === 'MXN' ? item.unitPriceMXN : item.unitPriceUSD;
+      return acc + unitPrice * item.quantity;
     }, 0);
   }, [items, currency]);
 
@@ -81,29 +82,61 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
 
   if (!isOpen) return null;
 
-  // Validation
-  const validateForm = () => {
+  const focusAndAlert = (fieldId: string, fieldName: string, message: string) => {
+    setErrorMessage(message);
+    setInvalidField(fieldName);
+    const el = document.getElementById(fieldId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.focus();
+    }
+  };
+
+  // 1. Validation for WhatsApp (Requires Name + 10-digit Phone; other fields enhance message if provided)
+  const validateForWhatsApp = (): boolean => {
     if (!clientName.trim()) {
-      setErrorMessage('Por favor ingresa tu nombre completo.');
+      focusAndAlert('cart-input-name', 'name', 'Por favor ingresa tu Nombre Completo para enviar tu pedido a WhatsApp.');
       return false;
     }
-    if (!clientPhone.trim() || clientPhone.replace(/\D/g, '').length < 10) {
-      setErrorMessage('Por favor ingresa un teléfono o WhatsApp de 10 dígitos.');
-      return false;
-    }
-    if (!clientEmail.trim() || !clientEmail.includes('@')) {
-      setErrorMessage('Por favor ingresa un correo electrónico válido para tu comprobante.');
-      return false;
-    }
-    if (!clientAddress.trim() || !clientCity.trim()) {
-      setErrorMessage('Por favor ingresa tu dirección y ciudad de entrega para coordinar el flete.');
+    const cleanPhone = clientPhone.replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      focusAndAlert('cart-input-phone', 'phone', 'Por favor ingresa un Teléfono o WhatsApp de 10 dígitos (ej. 639 123 4567).');
       return false;
     }
     if (requiresFactura && !clientRFC.trim()) {
-      setErrorMessage('Por favor ingresa tu RFC para la factura CFDI.');
+      focusAndAlert('cart-input-rfc', 'rfc', 'Por favor ingresa tu RFC para la factura fiscal CFDI.');
       return false;
     }
     setErrorMessage('');
+    setInvalidField('');
+    return true;
+  };
+
+  // 2. Validation for Stripe Card Payment (Requires Name, Phone, Email, Address)
+  const validateForStripe = (): boolean => {
+    if (!clientName.trim()) {
+      focusAndAlert('cart-input-name', 'name', 'Para pagar con tarjeta y emitir tu comprobante, ingresa tu Nombre Completo.');
+      return false;
+    }
+    const cleanPhone = clientPhone.replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      focusAndAlert('cart-input-phone', 'phone', 'Por favor ingresa un Teléfono o WhatsApp de 10 dígitos para coordinar tu entrega.');
+      return false;
+    }
+    if (!clientEmail.trim() || !clientEmail.includes('@')) {
+      focusAndAlert('cart-input-email', 'email', 'Por favor ingresa un Correo Electrónico válido para enviarte el comprobante de pago con tarjeta.');
+      return false;
+    }
+    if (!clientAddress.trim() || !clientCity.trim()) {
+      focusAndAlert('cart-input-address', 'address', 'Por favor ingresa tu Dirección y Ciudad para coordinar el envío de la maquinaria.');
+      return false;
+    }
+    if (requiresFactura && !clientRFC.trim()) {
+      focusAndAlert('cart-input-rfc', 'rfc', 'Por favor ingresa tu RFC para la factura fiscal CFDI.');
+      return false;
+    }
+    setErrorMessage('');
+    setInvalidField('');
     return true;
   };
 
@@ -115,22 +148,26 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
       createdAt: new Date().toISOString(),
       clientName: clientName.trim(),
       clientPhone: clientPhone.trim(),
-      clientEmail: clientEmail.trim(),
-      shippingAddress: clientAddress.trim(),
-      shippingCity: clientCity.trim(),
+      clientEmail: clientEmail.trim() || 'Por coordinar',
+      shippingAddress: clientAddress.trim() || 'A coordinar con vendedor',
+      shippingCity: clientCity.trim() || 'Por coordinar',
       shippingState: 'Por coordinar',
       shippingZip: clientCP.trim() || 'N/A',
       requiresInvoice: requiresFactura,
       rfc: requiresFactura ? clientRFC.trim().toUpperCase() : undefined,
       businessName: requiresFactura ? (clientRazonSocial.trim() || clientName.trim()) : undefined,
-      items: items.map((i) => ({
-        id: i.machine.id,
-        name: i.machine.name,
-        sku: i.machine.sku,
-        quantity: i.quantity,
-        unitPrice: currency === 'MXN' ? i.machine.priceMXN : i.machine.priceUSD,
-        total: (currency === 'MXN' ? i.machine.priceMXN : i.machine.priceUSD) * i.quantity,
-      })),
+      items: items.map((i) => {
+        const unitPrice = currency === 'MXN' ? i.unitPriceMXN : i.unitPriceUSD;
+        const variantSuffix = i.selectedVariant ? ` (${i.selectedVariant.name})` : '';
+        return {
+          id: i.machine.id,
+          name: `${i.machine.name}${variantSuffix}`,
+          sku: i.machine.sku,
+          quantity: i.quantity,
+          unitPrice,
+          total: unitPrice * i.quantity,
+        };
+      }),
       subtotal,
       iva: ivaAmount,
       shippingCost: 0, // Envio es a acordar con el vendedor
@@ -140,10 +177,10 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
     };
   };
 
-  // 1. FINALIZAR COMPRA POR WHATSAPP
+  // 1. FINALIZAR COMPRA POR WHATSAPP (Llega ya con todo al WhatsApp)
   const handleBuyWhatsApp = async () => {
     if (items.length === 0) return;
-    if (!validateForm()) return;
+    if (!validateForWhatsApp()) return;
 
     setIsProcessing(true);
     recordHotspotClick('Finalizar Pedido WhatsApp');
@@ -153,14 +190,14 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
     // Register in Admin store and send email notification
     await sendOrderNotificationEmail({ order: saleOrder, currency });
 
-    // Build structured WhatsApp message with ALL customer and equipment details
+    // Build structured WhatsApp message with customer & equipment details
     let msg = `*NUEVO PEDIDO - MAQUINARIA RENTERIA*\n`;
     msg += `Folio de Orden: #${saleOrder.folio}\n\n`;
     msg += `*DATOS DEL CLIENTE:*\n`;
     msg += `• Nombre: ${clientName.trim()}\n`;
     msg += `• Teléfono: ${clientPhone.trim()}\n`;
-    msg += `• Correo: ${clientEmail.trim()}\n`;
-    msg += `• Dirección de Entrega: ${clientAddress.trim()}, ${clientCity.trim()}\n`;
+    if (clientEmail.trim()) msg += `• Correo: ${clientEmail.trim()}\n`;
+    msg += `• Destino de Entrega: ${clientAddress.trim() || 'A coordinar en chat'}, ${clientCity.trim() || 'A coordinar'}\n`;
     if (clientCP.trim()) msg += `• C.P.: ${clientCP.trim()}\n`;
     if (requiresFactura) {
       msg += `• Facturación: Requiere CFDI (RFC: ${clientRFC.trim().toUpperCase()})\n`;
@@ -170,20 +207,23 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
     }
     if (clientNotes.trim()) msg += `• Notas: ${clientNotes.trim()}\n`;
 
-    msg += `\n*MAQUINARIA SOLICITADA:*\n`;
+    msg += `\n*MAQUINARIA SELECCIONADA:*\n`;
     items.forEach((item, idx) => {
-      const price = currency === 'MXN' ? item.machine.priceMXN : item.machine.priceUSD;
-      msg += `${idx + 1}. ${item.machine.name} (${item.machine.sku}) x${item.quantity} = ${formatCurrency(price * item.quantity, currency)}\n`;
+      const unitPrice = currency === 'MXN' ? item.unitPriceMXN : item.unitPriceUSD;
+      const variantSuffix = item.selectedVariant ? ` [${item.selectedVariant.name}]` : '';
+      msg += `${idx + 1}. *${item.machine.name}${variantSuffix}* (${item.machine.sku})\n`;
+      msg += `   • Cantidad: ${item.quantity} | Unitario: ${formatCurrency(unitPrice, currency)}\n`;
+      msg += `   • Subtotal: ${formatCurrency(unitPrice * item.quantity, currency)}\n`;
     });
 
     msg += `\n*RESUMEN FINANCIERO:*\n`;
-    msg += `• Subtotal: ${formatCurrency(subtotal, currency)}\n`;
+    msg += `• Subtotal Maquinaria: ${formatCurrency(subtotal, currency)}\n`;
     if (requiresFactura) {
       msg += `• IVA (16% Factura): +${formatCurrency(ivaAmount, currency)}\n`;
     }
-    msg += `• Costo de Envío: A acordar con el vendedor\n`;
+    msg += `• Costo de Envío: *A acordar con el vendedor (No incluido en web)*\n`;
     msg += `*TOTAL MAQUINARIA: ${formatCurrency(grandTotal, currency)}*\n\n`;
-    msg += `Hola Maquinaria Rentería, deseo finalizar esta compra y acordar los detalles de flete y entrega con el asesor.`;
+    msg += `Hola Maquinaria Rentería, deseo finalizar esta compra y acordar con el asesor los detalles de flete y fecha de entrega.`;
 
     setIsProcessing(false);
     setOrderConfirmedWhatsApp(saleOrder);
@@ -195,7 +235,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
   // 2. PAGAR EN LÍNEA CON STRIPE
   const handleInitiateStripePayment = () => {
     if (items.length === 0) return;
-    if (!validateForm()) return;
+    if (!validateForStripe()) return;
     recordHotspotClick('Pagar con Tarjeta (Stripe)');
     setShowStripeModal(true);
   };
@@ -228,9 +268,9 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
       `*Teléfono:* ${stripePaymentConfirmed.clientPhone}\n` +
       `*Correo:* ${stripePaymentConfirmed.clientEmail}\n` +
       `*Dirección de Entrega:* ${stripePaymentConfirmed.shippingAddress}, ${stripePaymentConfirmed.shippingCity}\n` +
-      `*Monto Pagado en Línea:* ${formatCurrency(stripePaymentConfirmed.total, currency)} (Stripe)\n\n` +
+      `*Monto Pagado en Línea:* ${formatCurrency(stripePaymentConfirmed.total, currency)} (Tarjeta / Stripe)\n\n` +
       `*Equipos Adquiridos:*\n${itemsSummary}\n\n` +
-      `Hola Maquinaria Rentería, adjunto mi comprobante de pago de la compra realizada en la web para acordar los temas del envío y tiempos de entrega.`;
+      `Hola Maquinaria Rentería, adjunto mi comprobante de pago de la compra realizada con tarjeta en la web para acordar los temas del envío y tiempos de entrega.`;
 
     const waPhone = config.phone1.replace(/\D/g, '') || '526391141084';
     window.open(`https://wa.me/52${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -253,13 +293,13 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
             <div className="flex items-center gap-2">
               <ShoppingBag size={20} className="text-[#2563eb]" />
               <h2 className="font-black text-base uppercase tracking-wide text-slate-900">
-                Tu Carrito de Compra ({items.length})
+                Tu Carrito de Compra ({items.reduce((acc, i) => acc + i.quantity, 0)})
               </h2>
             </div>
 
             <button
               onClick={onClose}
-              className="p-1 rounded-full text-slate-400 hover:text-slate-800 transition"
+              className="p-1 rounded-full text-slate-400 hover:text-slate-800 transition cursor-pointer"
               aria-label="Cerrar Carrito"
             >
               <X size={20} />
@@ -278,13 +318,13 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
 
                 <div className="space-y-1">
                   <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                    Pago Exitoso con Stripe
+                    Pago Exitoso con Tarjeta (Stripe)
                   </span>
                   <h3 className="text-xl font-black text-slate-900 uppercase mt-2">
                     ¡Gracias por tu compra!
                   </h3>
                   <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                    Tu pago ha sido procesado de forma segura y registrado en nuestro sistema de fabricación.
+                    Tu pago con tarjeta ha sido procesado de forma segura y registrado en nuestro sistema de fabricación.
                   </p>
                 </div>
 
@@ -320,7 +360,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
 
                 <button
                   onClick={handleSendStripeReceiptToWhatsApp}
-                  className="w-full py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition active:scale-98 cursor-pointer"
+                  className="w-full py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition active:scale-95 cursor-pointer"
                 >
                   <MessageCircle size={18} />
                   <span>Enviar Comprobante por WhatsApp y Acordar Envío</span>
@@ -365,10 +405,10 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                   </div>
 
                   {items.map((item) => {
-                    const price = currency === 'MXN' ? item.machine.priceMXN : item.machine.priceUSD;
+                    const unitPrice = currency === 'MXN' ? item.unitPriceMXN : item.unitPriceUSD;
                     return (
                       <div
-                        key={item.machine.id}
+                        key={item.id}
                         className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-3"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -383,8 +423,13 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                             <h4 className="font-bold text-slate-900 uppercase text-xs truncate">
                               {item.machine.name}
                             </h4>
-                            <span className="font-mono font-bold text-[#2563eb] text-xs block">
-                              {formatCurrency(price, currency)}
+                            {item.selectedVariant && (
+                              <span className="text-[10px] font-bold text-[#2563eb] bg-blue-100 px-1.5 py-0.5 rounded inline-block mt-0.5">
+                                {item.selectedVariant.name}
+                              </span>
+                            )}
+                            <span className="font-mono font-bold text-[#2563eb] text-xs block mt-0.5">
+                              {formatCurrency(unitPrice, currency)}
                             </span>
                           </div>
                         </div>
@@ -392,8 +437,9 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                         <div className="flex items-center gap-2 shrink-0">
                           <div className="flex items-center bg-white rounded-lg border border-slate-300">
                             <button
-                              onClick={() => onUpdateQuantity(item.machine.id, -1)}
-                              className="p-1 text-slate-500 hover:text-black cursor-pointer"
+                              onClick={() => onUpdateQuantity(item.id, -1)}
+                              className="p-1 text-slate-500 hover:text-black cursor-pointer active:scale-95"
+                              aria-label="Restar uno"
                             >
                               <Minus size={12} />
                             </button>
@@ -401,17 +447,19 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                               {item.quantity}
                             </span>
                             <button
-                              onClick={() => onUpdateQuantity(item.machine.id, 1)}
-                              className="p-1 text-slate-500 hover:text-black cursor-pointer"
+                              onClick={() => onUpdateQuantity(item.id, 1)}
+                              className="p-1 text-slate-500 hover:text-black cursor-pointer active:scale-95"
+                              aria-label="Sumar uno"
                             >
                               <Plus size={12} />
                             </button>
                           </div>
 
                           <button
-                            onClick={() => onRemoveItem(item.machine.id)}
-                            className="text-slate-400 hover:text-red-500 p-1 cursor-pointer"
+                            onClick={() => onRemoveItem(item.id)}
+                            className="text-slate-400 hover:text-red-500 p-1 cursor-pointer active:scale-95"
                             title="Eliminar"
+                            aria-label="Eliminar del carrito"
                           >
                             <Trash2 size={15} />
                           </button>
@@ -424,65 +472,101 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                 {/* 3. Customer Information Form */}
                 <div className="pt-2 space-y-2.5">
                   <span className="text-xs font-black uppercase tracking-wide text-slate-900 block border-b border-slate-200 pb-1.5">
-                    Datos del Cliente para Envío y Facturación:
+                    Datos del Cliente para Envío y Contacto:
                   </span>
 
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Nombre Completo *</label>
+                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
+                      Nombre Completo <span className="text-rose-500">*</span>
+                    </label>
                     <input
+                      id="cart-input-name"
                       type="text"
                       required
                       placeholder="Ej. Roberto Morales"
                       value={clientName}
-                      onChange={(e) => setClientName(e.target.value)}
-                      className="w-full p-2.5 text-xs border border-slate-300 rounded-lg focus:border-[#2563eb] focus:outline-none"
+                      onChange={(e) => {
+                        setClientName(e.target.value);
+                        if (invalidField === 'name') setErrorMessage('');
+                      }}
+                      className={`w-full p-2.5 text-xs border rounded-lg focus:outline-none transition ${
+                        invalidField === 'name' 
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' 
+                          : 'border-slate-300 focus:border-[#2563eb]'
+                      }`}
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">WhatsApp / Teléfono (10 dígitos) *</label>
+                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
+                        WhatsApp / Teléfono (10 dígitos) <span className="text-rose-500">*</span>
+                      </label>
                       <input
+                        id="cart-input-phone"
                         type="tel"
                         required
                         placeholder="Ej. 639 123 4567"
                         value={clientPhone}
-                        onChange={(e) => setClientPhone(e.target.value)}
-                        className="w-full p-2.5 text-xs border border-slate-300 rounded-lg focus:border-[#2563eb] focus:outline-none"
+                        onChange={(e) => {
+                          setClientPhone(e.target.value);
+                          if (invalidField === 'phone') setErrorMessage('');
+                        }}
+                        className={`w-full p-2.5 text-xs border rounded-lg focus:outline-none transition ${
+                          invalidField === 'phone' 
+                            ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' 
+                            : 'border-slate-300 focus:border-[#2563eb]'
+                        }`}
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Correo Electrónico *</label>
+                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
+                        Correo Electrónico (para comprobante)
+                      </label>
                       <input
+                        id="cart-input-email"
                         type="email"
-                        required
-                        placeholder="para comprobante"
+                        placeholder="ejemplo@correo.com"
                         value={clientEmail}
-                        onChange={(e) => setClientEmail(e.target.value)}
-                        className="w-full p-2.5 text-xs border border-slate-300 rounded-lg focus:border-[#2563eb] focus:outline-none"
+                        onChange={(e) => {
+                          setClientEmail(e.target.value);
+                          if (invalidField === 'email') setErrorMessage('');
+                        }}
+                        className={`w-full p-2.5 text-xs border rounded-lg focus:outline-none transition ${
+                          invalidField === 'email' 
+                            ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' 
+                            : 'border-slate-300 focus:border-[#2563eb]'
+                        }`}
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div className="sm:col-span-2">
-                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Dirección y Ciudad de Entrega *</label>
+                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
+                        Dirección de Entrega (Calle y número)
+                      </label>
                       <input
+                        id="cart-input-address"
                         type="text"
-                        required
-                        placeholder="Calle, número, colonia, ciudad y estado"
+                        placeholder="Calle, número, colonia"
                         value={clientAddress}
-                        onChange={(e) => setClientAddress(e.target.value)}
+                        onChange={(e) => {
+                          setClientAddress(e.target.value);
+                          if (invalidField === 'address') setErrorMessage('');
+                        }}
                         className="w-full p-2.5 text-xs border border-slate-300 rounded-lg focus:border-[#2563eb] focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Ciudad / Estado *</label>
+                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
+                        Ciudad / Estado
+                      </label>
                       <input
+                        id="cart-input-city"
                         type="text"
-                        required
                         placeholder="Ej. Monterrey, NL"
                         value={clientCity}
                         onChange={(e) => setClientCity(e.target.value)}
@@ -531,11 +615,17 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                     {requiresFactura && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-200">
                         <input
+                          id="cart-input-rfc"
                           type="text"
                           placeholder="RFC para factura *"
                           value={clientRFC}
-                          onChange={(e) => setClientRFC(e.target.value.toUpperCase())}
-                          className="w-full p-2 text-xs font-mono uppercase border border-slate-300 rounded-lg focus:outline-none bg-white"
+                          onChange={(e) => {
+                            setClientRFC(e.target.value.toUpperCase());
+                            if (invalidField === 'rfc') setErrorMessage('');
+                          }}
+                          className={`w-full p-2 text-xs font-mono uppercase border rounded-lg focus:outline-none bg-white ${
+                            invalidField === 'rfc' ? 'border-rose-500 ring-2 ring-rose-200' : 'border-slate-300'
+                          }`}
                         />
                         <input
                           type="text"
@@ -547,13 +637,6 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                       </div>
                     )}
                   </div>
-
-                  {errorMessage && (
-                    <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-bold flex items-center gap-1.5 animate-shake">
-                      <AlertTriangle size={15} className="shrink-0" />
-                      <span>{errorMessage}</span>
-                    </div>
-                  )}
 
                 </div>
               </>
@@ -574,7 +657,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                 <div className="flex justify-between items-center text-slate-800">
                   <span className="flex items-center gap-1 text-slate-600">
                     <Truck size={13} className="text-amber-600" />
-                    <span>Envío y maniobras:</span>
+                    <span>Envío y flete:</span>
                   </span>
                   <span className="font-bold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded text-[11px]">
                     A acordar con el vendedor
@@ -599,32 +682,65 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                 </div>
               </div>
 
+              {/* HIGH VISIBILITY ERROR BANNER IN THE FOOTER (GUARANTEES BUTTON CLICKS SHOW WHY IF INCOMPLETE) */}
+              {errorMessage && (
+                <div className="p-3 bg-rose-50 border-2 border-rose-400 text-rose-800 rounded-xl text-xs font-bold flex items-start gap-2 shadow-sm animate-shake">
+                  <AlertTriangle size={18} className="text-rose-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <span className="block font-black uppercase text-rose-900 text-[10px]">Dato Requerido:</span>
+                    <span>{errorMessage}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setErrorMessage('');
+                      setInvalidField('');
+                    }}
+                    className="text-rose-400 hover:text-rose-700 text-xs cursor-pointer p-0.5"
+                    aria-label="Cerrar alerta"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               {/* 2 Clear Action Buttons */}
               <div className="space-y-2">
                 {/* 1. Finalizar en WhatsApp (Llega ya con todo al WhatsApp) */}
                 <button
+                  type="button"
                   onClick={handleBuyWhatsApp}
                   disabled={isProcessing}
-                  className="w-full py-3 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition active:scale-98 cursor-pointer disabled:opacity-50"
+                  className="w-full py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   <MessageCircle size={18} />
                   <span>Finalizar Compra por WhatsApp</span>
                 </button>
 
-                {/* 2. Pagar en Línea con Stripe */}
+                {/* 2. Pagar en Línea con Tarjeta (Stripe) */}
                 <button
+                  type="button"
                   onClick={handleInitiateStripePayment}
                   disabled={isProcessing}
-                  className="w-full py-3 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition active:scale-98 cursor-pointer disabled:opacity-50"
+                  className="w-full py-3.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50"
                 >
-                  <CreditCard size={16} />
-                  <span>Pagar en Línea con Tarjeta (Stripe)</span>
+                  <CreditCard size={17} />
+                  <span>Pagar con Tarjeta (Crédito / Débito)</span>
                 </button>
               </div>
 
-              <div className="flex items-center justify-center gap-2 text-[10px] text-slate-500 pt-1">
-                <ShieldCheck size={12} className="text-emerald-600" />
-                <span>Fabricación directa sobre pedido • Garantía 1 año • Soporte Maquinaria Rentería</span>
+              {/* Payment methods and trust badges */}
+              <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] text-slate-500 pt-1">
+                <span className="flex items-center gap-1 font-bold text-slate-700">
+                  <CreditCard size={11} className="text-[#2563eb]" />
+                  <span>Tarjetas Visa, Mastercard, AMEX</span>
+                </span>
+                <span>•</span>
+                <span className="font-bold text-slate-700">Transferencia SPEI</span>
+                <span>•</span>
+                <span className="flex items-center gap-1 text-emerald-700 font-bold">
+                  <ShieldCheck size={11} />
+                  <span>Garantía 1 Año</span>
+                </span>
               </div>
 
             </div>
@@ -636,39 +752,41 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
       {/* STRIPE PAYMENT MODAL */}
       {showStripeModal && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4 text-slate-900">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4 text-slate-900 animate-scaleUp">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-[#2563eb]" />
                 <h3 className="font-black text-sm uppercase text-slate-900">
-                  Pasarela de Pago Segura (Stripe)
+                  Pago Seguro con Tarjeta (Stripe)
                 </h3>
               </div>
               <button 
                 onClick={() => setShowStripeModal(false)}
-                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 cursor-pointer p-1"
+                aria-label="Cerrar modal de pago"
               >
                 <X size={18} />
               </button>
             </div>
 
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Monto total a pagar:</span>
-                <b className="font-mono text-base text-[#2563eb]">{formatCurrency(grandTotal, currency)}</b>
+              <div className="flex justify-between items-baseline">
+                <span className="text-slate-500 font-medium">Monto a pagar:</span>
+                <b className="font-mono text-lg text-[#2563eb]">{formatCurrency(grandTotal, currency)}</b>
               </div>
-              <p className="text-[11px] text-slate-500">
-                Cliente: <b>{clientName}</b> · Entrega en: <b>{clientCity}</b>
+              <p className="text-[11px] text-slate-600">
+                Cliente: <b>{clientName}</b> · Entrega: <b>{clientCity || 'A acordar'}</b>
               </p>
-              <p className="text-[10px] text-amber-800 italic pt-1 border-t border-slate-200">
-                * El costo de envío se coordinará vía WhatsApp una vez confirmado este pago.
-              </p>
+              <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 font-bold pt-1 border-t border-slate-200">
+                <Lock size={11} />
+                <span>Aceptamos Tarjetas de Crédito y Débito (Visa, Mastercard, AMEX)</span>
+              </div>
             </div>
 
             <form onSubmit={handleConfirmStripePayment} className="space-y-3 text-xs">
               <div>
                 <label className="block text-slate-700 font-bold uppercase text-[10px] mb-1">
-                  Número de Tarjeta (Crédito / Débito)
+                  Número de Tarjeta (Crédito o Débito) *
                 </label>
                 <input
                   type="text"
@@ -683,7 +801,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-slate-700 font-bold uppercase text-[10px] mb-1">
-                    Vencimiento (MM/AA)
+                    Vencimiento (MM/AA) *
                   </label>
                   <input
                     type="text"
@@ -697,7 +815,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
 
                 <div>
                   <label className="block text-slate-700 font-bold uppercase text-[10px] mb-1">
-                    CVC / CVV
+                    CVC / CVV *
                   </label>
                   <input
                     type="password"
@@ -715,7 +833,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                 <button
                   type="submit"
                   disabled={isProcessing}
-                  className="w-full py-3 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition active:scale-98 cursor-pointer disabled:opacity-50"
+                  className="w-full py-3.5 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   {isProcessing ? (
                     <span>Procesando pago con Stripe...</span>
