@@ -44,11 +44,11 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onExi
         
         {/* Header with Official Logo */}
         <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 bg-slate-50 rounded-2xl border border-slate-200 p-2 flex items-center justify-center shadow-xs">
+          <div className="bg-[#070e22] rounded-2xl border border-slate-800 px-5 py-2.5 flex items-center justify-center shadow-md">
             <img
-              src="/images/logo_transparent.png"
+              src="/images/logo_gold_transparent.png"
               alt="Maquinaria Renteria"
-              className="w-full h-full object-contain"
+              className="h-10 w-auto object-contain"
             />
           </div>
         </div>

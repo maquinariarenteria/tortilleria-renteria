@@ -22,21 +22,11 @@ export const Footer: React.FC = () => {
           {/* Col 1: Brand & Slogan */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white rounded-xl p-1 flex items-center justify-center shrink-0 shadow-sm border border-slate-700">
-                <img
-                  src="/images/logo_transparent.png"
-                  alt="Maquinaria Renteria Logo"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-black text-lg uppercase tracking-wider leading-none">
-                  MAQUINARIA <span className="text-[#2563eb]">RENTERIA</span>
-                </span>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
-                  El motor de tu tortillería
-                </span>
-              </div>
+              <img
+                src="/images/logo_gold_transparent.png"
+                alt="Maquinaria Rentería"
+                className="h-12 sm:h-14 w-auto object-contain drop-shadow-[0_2px_10px_rgba(234,179,8,0.2)]"
+              />
             </div>
 
             <p className="text-sm font-bold text-blue-400 italic">

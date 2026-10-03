@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingCart, Globe } from 'lucide-react';
+import { ShoppingCart, Globe, Calendar } from 'lucide-react';
 
 interface NavbarProps {
   cartCount: number;
@@ -17,39 +17,37 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAppointment,
 }) => {
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xs border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-30 bg-[#070e22] text-white shadow-xl border-b border-slate-800/80 backdrop-blur-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between">
         
-        {/* Brand: MAQUINARIA RENTERIA */}
-        <a href="#" className="flex items-center gap-2.5 group shrink-0">
+        {/* Brand: MAQUINARIA RENTERIA Official Gold Logo */}
+        <a href="#" className="flex items-center gap-3 group shrink-0" title="Maquinaria Rentería - Inicio">
           <img
-            src="/images/logo_transparent.png"
-            alt="Maquinaria Renteria Logo"
-            className="h-10 sm:h-12 w-auto object-contain transition-transform group-hover:scale-105"
+            src="/images/logo_gold_transparent.png"
+            alt="Maquinaria Rentería"
+            className="h-11 sm:h-14 w-auto object-contain transition-transform group-hover:scale-105 drop-shadow-[0_2px_12px_rgba(234,179,8,0.25)]"
           />
-          <div className="flex flex-col">
-            <span className="font-extrabold text-xs sm:text-base md:text-lg tracking-wider text-slate-900 uppercase leading-tight">
-              MAQUINARIA <span className="text-[#2563eb]">RENTERIA</span>
-            </span>
-            <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden xs:block">
-              El motor de tu tortillería
-            </span>
-          </div>
         </a>
 
         {/* Minimal Navigation */}
-        <nav className="hidden md:flex items-center gap-6 text-xs font-bold uppercase text-slate-600">
-          <a href="#" className="text-[#2563eb]">Inicio</a>
-          <a href="#catalog-section" className="hover:text-slate-900 transition">Catálogo</a>
+        <nav className="hidden md:flex items-center gap-7 text-xs font-bold uppercase tracking-wider text-slate-300">
+          <a href="#" className="text-amber-400 hover:text-amber-300 transition-colors">
+            Inicio
+          </a>
+          <a href="#catalog-section" className="hover:text-white transition-colors">
+            Catálogo
+          </a>
           {onOpenAppointment && (
             <button
               onClick={onOpenAppointment}
-              className="hover:text-[#2563eb] transition uppercase cursor-pointer"
+              className="hover:text-amber-400 transition-colors uppercase cursor-pointer"
             >
               Agendar Cita
             </button>
           )}
-          <a href="#contact-section" className="hover:text-slate-900 transition">Contacto</a>
+          <a href="#contact-section" className="hover:text-white transition-colors">
+            Contacto
+          </a>
         </nav>
 
         {/* Actions: Currency, Appointment & Cart */}
@@ -57,28 +55,31 @@ export const Navbar: React.FC<NavbarProps> = ({
           {onOpenAppointment && (
             <button
               onClick={onOpenAppointment}
-              className="hidden sm:flex items-center gap-1.5 bg-blue-50 text-[#2563eb] hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-bold transition uppercase tracking-wide cursor-pointer"
+              className="hidden sm:flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-3.5 py-2 rounded-xl text-xs uppercase tracking-wider transition-all active:scale-95 shadow-md shadow-amber-500/20 cursor-pointer"
             >
-              <span>📅 Agendar Cita</span>
+              <Calendar size={14} className="text-slate-950" />
+              <span>Agendar Cita</span>
             </button>
           )}
 
           <button
             onClick={onToggleCurrency}
-            className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2 sm:px-3 py-1.5 rounded transition cursor-pointer"
+            className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-200 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl transition cursor-pointer shadow-2xs"
+            title="Cambiar divisa"
           >
-            <Globe size={12} className="text-[#2563eb]" />
-            <span>{currency === 'USD' ? 'USD' : 'MXN'}</span>
+            <Globe size={13} className="text-amber-400" />
+            <span className="font-mono">{currency === 'USD' ? 'USD' : 'MXN'}</span>
           </button>
 
           <button
             onClick={onOpenCart}
-            className="relative flex items-center gap-1.5 bg-[#0f172a] hover:bg-black text-white px-2.5 sm:px-4 py-1.5 sm:py-2 rounded text-[11px] sm:text-xs font-bold uppercase transition active:scale-95 shadow-sm"
+            className="relative flex items-center gap-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold uppercase transition active:scale-95 shadow-md shadow-blue-500/30 cursor-pointer"
+            title="Ver carrito de compras"
           >
-            <ShoppingCart size={14} className="text-[#2563eb]" />
-            <span className="hidden xs:inline">Carrito</span>
+            <ShoppingCart size={15} className="text-white" />
+            <span className="hidden xs:inline tracking-wider">Carrito</span>
             {cartCount > 0 && (
-              <span className="px-1.5 py-0.2 bg-[#2563eb] text-white text-[10px] font-black rounded-full animate-bounce">
+              <span className="px-1.5 py-0.5 bg-amber-400 text-slate-950 text-[10px] font-black rounded-full animate-bounce shadow-xs">
                 {cartCount}
               </span>
             )}

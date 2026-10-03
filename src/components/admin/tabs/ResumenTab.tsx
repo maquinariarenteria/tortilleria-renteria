@@ -55,11 +55,11 @@ export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
       {/* Top Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-slate-50 border border-slate-200 rounded-xl p-1.5 flex items-center justify-center shrink-0">
+          <div className="bg-[#070e22] border border-slate-800 rounded-xl px-3.5 py-2 flex items-center justify-center shrink-0 shadow-xs">
             <img
-              src="/images/logo_transparent.png"
+              src="/images/logo_gold_transparent.png"
               alt="Maquinaria Renteria"
-              className="w-full h-full object-contain"
+              className="h-8 w-auto object-contain"
             />
           </div>
           <div>

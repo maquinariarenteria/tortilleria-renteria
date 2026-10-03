@@ -27,13 +27,11 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onRefresh, onExit, isR
       
       {/* Brand Header: Logo and Official Name */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-white rounded-xl p-1 flex items-center justify-center shrink-0 shadow-sm border border-slate-700">
-          <img
-            src="/images/logo_transparent.png"
-            alt="Maquinaria Renteria"
-            className="w-full h-full object-contain"
-          />
-        </div>
+        <img
+          src="/images/logo_gold_transparent.png"
+          alt="Maquinaria Renteria"
+          className="h-9 w-auto object-contain"
+        />
 
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
