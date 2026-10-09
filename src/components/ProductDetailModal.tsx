@@ -1,8 +1,9 @@
+import { useModalFocus } from '../hooks/useModalFocus';
 import React, { useState, useEffect } from 'react';
 import { MachineProduct, ProductVariant } from '../types';
 import { formatCurrency, formatNumber, getProductPrice, getProductDiameter } from '../utils/formatters';
 import { X, Check, Plus, MessageCircle, Calendar, ShieldCheck, Ruler, Layers } from 'lucide-react';
-import { addStoredQuote, recordHotspotClick } from '../utils/adminStore';
+import { recordHotspotClick } from '../utils/adminStore';
 
 interface ProductDetailModalProps {
   machine: MachineProduct | null;
@@ -34,6 +35,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     setAddedJustNow(false);
   }, [machine]);
 
+  const modalRef = useModalFocus(!!machine, onClose);
   if (!machine) return null;
 
   const currentPrice = getProductPrice(machine, selectedVariant, currency);
@@ -49,30 +51,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     recordHotspotClick('Cotizar por WhatsApp');
 
     const variantLabel = selectedVariant ? ` [Variante: ${selectedVariant.name}]` : '';
-
-    // Register quote in Admin CotizacionesTab automatically
-    addStoredQuote({
-      id: `cot_${Date.now()}`,
-      folio: `COT-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
-      createdAt: new Date().toISOString(),
-      customerName: 'Prospecto WhatsApp',
-      phone: 'Por WhatsApp',
-      email: '',
-      stateOrCity: 'Por coordinar',
-      businessType: 'Otro',
-      items: [{
-        machineId: machine.id,
-        name: `${machine.name}${variantLabel}`,
-        quantity: 1,
-        price: currentPrice,
-        capacity: selectedVariant?.capacityText || `${machine.capacityPerHour} tortillas/hr`,
-        energyType: machine.energyType,
-      }],
-      estimatedTotal: currentPrice,
-      status: 'Nueva',
-      priority: 'Alta',
-      notes: `Cotización directa de ${machine.name} (${machine.sku})${variantLabel}.`,
-    });
 
     let text = `Hola Maquinaria Renteria, me interesa cotizar:\n\n` +
       `*${machine.name}* (SKU: ${machine.sku})\n`;
@@ -98,7 +76,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-xs font-sans">
+    <div ref={modalRef} role="dialog" aria-modal="true" aria-label={machine.name} className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-xs font-sans">
       
       {/* Floating Modal Window with Scale-Up Animation */}
       <div 

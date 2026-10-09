@@ -3,6 +3,8 @@ import type { Env } from './index';
 import type { AdminSaleOrder } from '../types/admin';
 import { MACHINES_DATA } from '../data/machines';
 import { getProductPrice } from '../utils/formatters';
+import { digest, readJson, readBytes } from './security';
+import { auditLog, readCatalog } from './records';
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
   status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
@@ -15,7 +17,7 @@ const text = (value: unknown, required = false) => {
   }
   return value.trim();
 };
-const client = (env: Env) => new Stripe(env.STRIPE_SECRET_KEY!, { httpClient: Stripe.createFetchHttpClient(), maxNetworkRetries: 2 });
+const client = (env: Env) => new Stripe(env.STRIPE_SECRET_KEY!, { httpClient: Stripe.createFetchHttpClient(), maxNetworkRetries: 2, timeout: 15000 });
 
 export async function buildStripeOrder(body: any, env: Env) {
   const currency = body.currency;
@@ -27,22 +29,26 @@ export async function buildStripeOrder(body: any, env: Env) {
   const clientName = text(customer.name, true);
   const clientPhone = text(customer.phone, true);
   const clientEmail = text(customer.email, true);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail) || clientPhone.replace(/\D/g, '').length < 10) throw new InputError('Correo o teléfono inválido.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail) || !/^\d{10,15}$/.test(clientPhone.replace(/\D/g, ''))) throw new InputError('Correo o teléfono inválido.');
   const shippingAddress = text(customer.address, true);
   const shippingCity = text(customer.city, true);
   const rfc = text(customer.rfc, body.requiresInvoice);
   const items: AdminSaleOrder['items'] = [];
+  const catalog = await readCatalog(env);
+  const quantities = new Map<string, number>();
   for (const item of body.items) {
     if (!item || typeof item !== 'object') throw new InputError('Artículo inválido.');
     if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 20) throw new InputError('Cantidad inválida.');
-    const machine = MACHINES_DATA.find(m => m.id === item.machineId);
+    const machine = catalog.find((m: typeof MACHINES_DATA[number]) => m.id === item.machineId);
     if (!machine) throw new InputError('Equipo no disponible para pago en línea. Contacta al asesor.');
-    const variant = item.variantId ? machine.variants?.find(v => v.id === item.variantId) : undefined;
+    const variant = item.variantId ? machine.variants?.find((v: any) => v.id === item.variantId) : undefined;
     if (item.variantId && !variant) throw new InputError('Variante inválida.');
     // D1 is the authoritative base price when the catalog has been synchronized.
-    const stored = await env.DB.prepare('SELECT price_mxn, price_usd FROM machines WHERE id = ?').bind(machine.id).first();
-    const pricedMachine = stored ? { ...machine, priceMXN: stored.price_mxn, priceUSD: stored.price_usd } : machine;
-    const unitPrice = getProductPrice(pricedMachine, variant, currency);
+    const productKey = `${machine.id}:${variant?.id || 'base'}`;
+    const quantity = (quantities.get(productKey) || 0) + item.quantity;
+    if (quantity > 20) throw new InputError('Cantidad inválida.');
+    quantities.set(productKey, quantity);
+    const unitPrice = getProductPrice(machine, variant, currency);
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) throw new InputError('Precio no disponible. Contacta al asesor.');
     items.push({ id: machine.id, sku: machine.sku, name: machine.name + (variant ? ` (${variant.name})` : ''), quantity: item.quantity, unitPrice, total: unitPrice * item.quantity });
   }
@@ -67,12 +73,14 @@ export async function buildStripeOrder(body: any, env: Env) {
 
 async function confirmPayment(session: Stripe.Checkout.Session, env: Env) {
   if (session.payment_status !== 'paid') return;
-  const row = await env.DB.prepare('SELECT * FROM stripe_orders WHERE session_id = ?').bind(session.id).first();
+  if (session.livemode !== /^(sk|rk)_live_/.test(env.STRIPE_SECRET_KEY!)) throw new Error('Payment environment mismatch');
+  const row = await env.DB.prepare('SELECT * FROM stripe_orders WHERE session_id = ? OR id = ?').bind(session.id, session.client_reference_id).first();
   if (!row) throw new Error('Unknown Stripe session'); // Retry if a webhook races with checkout persistence.
   if (session.amount_total !== row.amount_due || session.currency !== row.currency.toLowerCase() || session.client_reference_id !== row.id) throw new Error('Payment mismatch');
+  if (row.session_id && row.session_id !== session.id) throw new Error('Payment reference mismatch');
   // One conditional UPDATE makes retries and concurrent deliveries idempotent.
-  await env.DB.prepare("UPDATE stripe_orders SET payment_status = 'paid', paid_at = COALESCE(paid_at, ?) WHERE id = ? AND payment_status != 'paid'")
-    .bind(new Date().toISOString(), row.id).run();
+  await env.DB.prepare("UPDATE stripe_orders SET payment_status = 'paid', session_id = ?, paid_at = COALESCE(paid_at, ?) WHERE id = ? AND payment_status != 'paid'")
+    .bind(session.id, new Date().toISOString(), row.id).run();
 }
 
 export async function handleStripe(request: Request, env: Env): Promise<Response | null> {
@@ -82,23 +90,30 @@ export async function handleStripe(request: Request, env: Env): Promise<Response
   try {
     if (url.pathname === '/api/stripe/create-checkout-session' && request.method === 'POST') {
       if (request.headers.get('Origin') !== new URL(env.SITE_URL).origin) return json({ error: 'Origen inválido.' }, 403);
-      if (Number(request.headers.get('Content-Length') || 0) > 20000) return json({ error: 'Pedido demasiado grande.' }, 413);
-      const payload = await request.text();
-      if (payload.length > 20000) return json({ error: 'Pedido demasiado grande.' }, 413);
-      let body;
-      try { body = JSON.parse(payload); } catch { return json({ error: 'Pedido inválido.' }, 400); }
-      if (!body || typeof body !== 'object') return json({ error: 'Pedido inválido.' }, 400);
+      const body = await readJson(request, 20000);
+      if (!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(body.requestId || '')) return json({ error: 'Referencia del intento inválida.' }, 400);
       const { order, amount, total, currency, paymentType } = await buildStripeOrder(body, env);
-      const accessToken = crypto.randomUUID() + crypto.randomUUID();
-      await env.DB.prepare('INSERT INTO stripe_orders (id, access_token, order_json, currency, payment_type, amount_due, total_amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-        .bind(order.folio, accessToken, JSON.stringify(order), currency, paymentType, amount, total, order.createdAt).run();
+      order.folio = `VTA-${await digest(body.requestId)}`;
+      const newToken = crypto.randomUUID() + crypto.randomUUID();
+      await env.DB.prepare('INSERT OR IGNORE INTO stripe_orders (id, access_token, order_json, currency, payment_type, amount_due, total_amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .bind(order.folio, newToken, JSON.stringify(order), currency, paymentType, amount, total, order.createdAt).run();
+      const stored = await env.DB.prepare('SELECT * FROM stripe_orders WHERE id = ?').bind(order.folio).first();
+      const fingerprint = (value: any) => JSON.stringify({ ...value, createdAt: '', folio: '' });
+      if (!stored || fingerprint(JSON.parse(stored.order_json)) !== fingerprint(order)) return json({ error: 'El intento corresponde a otro carrito. Actualiza la página.' }, 409);
+      const accessToken = stored.access_token;
+      if (stored.session_id) {
+        const existing = await client(env).checkout.sessions.retrieve(stored.session_id);
+        if (existing.status === 'expired') return json({ error: 'El intento de pago expiró. Cierra y vuelve a abrir el carrito.' }, 409);
+        if (!existing.url) return json({ error: 'Este intento ya se completó. Contacta al asesor con tu folio.' }, 409);
+        return json({ success: true, checkoutUrl: existing.url, id: existing.id, amount: amount / 100, currency });
+      }
       const origin = new URL(env.SITE_URL).origin;
       const session = await client(env).checkout.sessions.create({
         mode: 'payment', integration_identifier: 'renteria_checkout_qmrtvazp', customer_email: order.clientEmail, client_reference_id: order.folio,
         line_items: [{ quantity: 1, price_data: { currency: currency.toLowerCase(), unit_amount: amount,
           product_data: { name: 'Pago completo · Maquinaria Rentería', description: order.items.map(i => `${i.name} x${i.quantity}`).join(', ').slice(0, 1000) } } }],
         metadata: { order_id: order.folio, payment_type: paymentType },
-        success_url: `${origin}/?payment=success&session_id={CHECKOUT_SESSION_ID}&token=${accessToken}`,
+        success_url: `${origin}/?payment=success&session_id={CHECKOUT_SESSION_ID}#stripe_token=${accessToken}`,
         cancel_url: `${origin}/?payment=cancel`,
       }, { idempotencyKey: order.folio });
       if (!session.url) throw new Error('No checkout URL');
@@ -107,8 +122,9 @@ export async function handleStripe(request: Request, env: Env): Promise<Response
     }
     if (url.pathname === '/api/stripe/webhook' && request.method === 'POST') {
       let event: Stripe.Event;
+      const rawBody = new TextDecoder().decode(await readBytes(request, 250000));
       try {
-        event = await client(env).webhooks.constructEventAsync(await request.text(), request.headers.get('Stripe-Signature') || '', env.STRIPE_WEBHOOK_SECRET!, undefined, Stripe.createSubtleCryptoProvider());
+        event = await client(env).webhooks.constructEventAsync(rawBody, request.headers.get('Stripe-Signature') || '', env.STRIPE_WEBHOOK_SECRET!, undefined, Stripe.createSubtleCryptoProvider());
       } catch { return json({ error: 'Firma inválida.' }, 400); }
       if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
         await confirmPayment(event.data.object as Stripe.Checkout.Session, env);
@@ -120,12 +136,15 @@ export async function handleStripe(request: Request, env: Env): Promise<Response
       }
       return json({ received: true });
     }
-    if (url.pathname === '/api/stripe/session' && request.method === 'GET') {
-      const sessionId = url.searchParams.get('session_id');
-      const token = url.searchParams.get('token');
+    if (url.pathname === '/api/stripe/session' && ['GET', 'POST'].includes(request.method)) {
+      const input = request.method === 'POST' ? await readJson(request, 2000) : {};
+      const sessionId = request.method === 'POST' ? input.sessionId : url.searchParams.get('session_id');
+      const token = request.method === 'POST' ? input.token : url.searchParams.get('token');
       if (!sessionId || !token) return json({ error: 'Referencia inválida.' }, 400);
+      if (typeof sessionId !== 'string' || typeof token !== 'string' || sessionId.length > 100 || token.length > 100) return json({ error: 'Referencia inválida.' }, 400);
       const row = await env.DB.prepare('SELECT * FROM stripe_orders WHERE session_id = ? AND access_token = ?').bind(sessionId, token).first();
       if (!row) return json({ error: 'Pedido no encontrado.' }, 404);
+      if (Date.parse(row.created_at) + 7 * 86400000 < Date.now()) return json({ error: 'El enlace expiró. Contacta al asesor con tu folio.' }, 410);
       if (row.payment_status !== 'paid') {
         // A customer returning before the webhook can still be verified directly with Stripe.
         await confirmPayment(await client(env).checkout.sessions.retrieve(sessionId), env);
@@ -143,6 +162,7 @@ export async function handleStripe(request: Request, env: Env): Promise<Response
       const order = JSON.parse(row.order_json);
       order.manufacturingStatus = body.status;
       await env.DB.prepare('UPDATE stripe_orders SET order_json = ? WHERE id = ?').bind(JSON.stringify(order), folio).run();
+      await auditLog(env, 'order.manufacturing-status', folio);
       return json({ success: true });
     }
     // Authentication is checked by the Worker's admin middleware before reaching this route.
@@ -152,6 +172,7 @@ export async function handleStripe(request: Request, env: Env): Promise<Response
     }
     return json({ error: 'Ruta no disponible.' }, 405);
   } catch (error) {
+    if (error && typeof error === 'object' && 'status' in error && typeof error.status === 'number') return json({ error: error instanceof Error ? error.message : 'Solicitud inválida.' }, error.status);
     if (error instanceof InputError) return json({ error: error.message }, 400);
     console.error('Stripe request failed:', error instanceof Error ? error.name : 'UnknownError');
     return json({ success: false, error: 'No se pudo completar la operación de pago. Intenta nuevamente o contacta al asesor.' }, 502);

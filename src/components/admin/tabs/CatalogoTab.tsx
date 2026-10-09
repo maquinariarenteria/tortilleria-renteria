@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MachineProduct, MachineCategory, EnergyType } from '../../../types';
 import { 
   getStoredMachines, 
@@ -18,6 +18,8 @@ export const CatalogoTab: React.FC = () => {
   const [isNew, setIsNew] = useState(false);
   const [isUploadingR2, setIsUploadingR2] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => { const update = () => setMachines(getStoredMachines()); window.addEventListener('mr_machines_updated', update); return () => window.removeEventListener('mr_machines_updated', update); }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -78,7 +80,8 @@ export const CatalogoTab: React.FC = () => {
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
+    try {
     e.preventDefault();
     if (!editingMachine || !editingMachine.name.trim()) {
       showToast('El nombre de la máquina es obligatorio.');
@@ -86,30 +89,35 @@ export const CatalogoTab: React.FC = () => {
     }
 
     if (isNew) {
-      const updated = addStoredMachine(editingMachine);
+      const updated = await addStoredMachine(editingMachine);
       setMachines(updated);
       showToast('¡Máquina agregada exitosamente al catálogo!');
     } else {
-      const updated = updateStoredMachine(editingMachine.id, editingMachine);
+      const updated = await updateStoredMachine(editingMachine.id, editingMachine);
       setMachines(updated);
       showToast('¡Máquina actualizada exitosamente!');
     }
 
     setEditingMachine(null);
+    } catch (error) { showToast(error instanceof Error ? error.message : "No se pudo guardar en el servidor."); }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    try {
     if (confirm('¿Estás seguro de eliminar esta máquina del catálogo?')) {
-      const updated = deleteStoredMachine(id);
+      const updated = await deleteStoredMachine(id);
       setMachines(updated);
       showToast('Máquina eliminada.');
     }
+    } catch (error) { showToast(error instanceof Error ? error.message : "No se pudo guardar en el servidor."); }
   };
 
-  const handleToggleFeatured = (machine: MachineProduct) => {
-    const updated = updateStoredMachine(machine.id, { featured: !machine.featured });
+  const handleToggleFeatured = async (machine: MachineProduct) => {
+    try {
+    const updated = await updateStoredMachine(machine.id, { featured: !machine.featured });
     setMachines(updated);
     showToast(`Máquina ${!machine.featured ? 'destacada' : 'retirada'} en página de inicio.`);
+    } catch (error) { showToast(error instanceof Error ? error.message : "No se pudo guardar en el servidor."); }
   };
 
   return (

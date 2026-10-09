@@ -17,6 +17,7 @@ export const ContactSection: React.FC = () => {
     return () => window.removeEventListener('mr_config_updated', handleConfigUpdate);
   }, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -30,8 +31,9 @@ export const ContactSection: React.FC = () => {
     if (!formData.name.trim() || !formData.phone.trim()) return;
 
     setIsSubmitting(true);
+    setSubmitError('');
     recordHotspotClick('Formulario de Contacto');
-
+    try {
     const result = await sendContactInquiryEmail({
       name: formData.name,
       phone: formData.phone,
@@ -42,10 +44,13 @@ export const ContactSection: React.FC = () => {
 
     setIsSubmitting(false);
     setSubmittedQuote(result.quote);
+    } catch (error) { setSubmitError(error instanceof Error ? error.message : 'No se pudo guardar tu solicitud. Intenta nuevamente.'); }
+    finally { setIsSubmitting(false); }
   };
 
   return (
     <section id="contact-section" className="py-12 border-t border-slate-200 overflow-hidden bg-white">
+      {submitError && <p role="alert" className="p-4 text-red-700 text-center">{submitError}</p>}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <ScrollReveal direction="down">
@@ -194,7 +199,7 @@ export const ContactSection: React.FC = () => {
                       Folio: #{submittedQuote.folio}
                     </span>
                     <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                      Hemos recibido tu solicitud y la registramos en nuestro sistema comercial. Un asesor se comunicará contigo hoy mismo.
+                      Hemos recibido tu solicitud y la registramos en nuestro sistema comercial. Un asesor revisará tu solicitud para coordinar los detalles contigo.
                     </p>
                     <a
                       href={`https://wa.me/526391141084?text=Hola%20Maquinaria%20Renteria,%20acabo%20de%20enviar%20mi%20cotizaci%C3%B3n%20%23${submittedQuote.folio}%20a%20nombre%20de%20${encodeURIComponent(formData.name)}.`}
@@ -209,8 +214,8 @@ export const ContactSection: React.FC = () => {
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-3 text-xs">
                     <div>
-                      <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Nombre Completo *</label>
-                      <input
+                      <label htmlFor="contactsection-1" className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Nombre Completo *</label>
+                      <input id="contactsection-1"
                         type="text"
                         required
                         placeholder="Tu nombre completo"
@@ -222,8 +227,8 @@ export const ContactSection: React.FC = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
-                        <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">WhatsApp / Teléfono *</label>
-                        <input
+                        <label htmlFor="contactsection-2" className="block font-bold text-slate-700 uppercase text-[10px] mb-1">WhatsApp / Teléfono *</label>
+                        <input id="contactsection-2"
                           type="tel"
                           required
                           placeholder="10 dígitos"
@@ -234,8 +239,8 @@ export const ContactSection: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Correo Electrónico</label>
-                        <input
+                        <label htmlFor="contactsection-3" className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Correo Electrónico</label>
+                        <input id="contactsection-3"
                           type="email"
                           placeholder="tu@correo.com"
                           value={formData.email}
@@ -246,8 +251,8 @@ export const ContactSection: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Ciudad y Estado de Entrega</label>
-                      <input
+                      <label htmlFor="contactsection-4" className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Ciudad y Estado de Entrega</label>
+                      <input id="contactsection-4"
                         type="text"
                         placeholder="Ej. Hermosillo, Sonora"
                         value={formData.city}
@@ -257,8 +262,8 @@ export const ContactSection: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Equipo o Capacidad Requerida *</label>
-                      <textarea
+                      <label htmlFor="contactsection-5" className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Equipo o Capacidad Requerida *</label>
+                      <textarea id="contactsection-5"
                         rows={2}
                         required
                         placeholder="Ej. Prensa de 1,200 tortillas/hora o comal rotativo..."

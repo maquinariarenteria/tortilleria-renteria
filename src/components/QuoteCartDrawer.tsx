@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useModalFocus } from '../hooks/useModalFocus';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { CartItem } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { sendOrderNotificationEmail } from '../utils/emailService';
@@ -28,6 +29,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
   onRemoveItem,
   onClearCart,
 }) => {
+  const paymentAttempt = useRef({ fingerprint: '', id: '' });
   const config = getSiteConfig();
 
   // Customer Details Form
@@ -54,6 +56,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
   const [showStripeModal, setShowStripeModal] = useState(false);
   // Lock body scroll when drawer is open
   useEffect(() => {
+    if (!isOpen) { paymentAttempt.current = { fingerprint: '', id: '' }; return; }
     if (isOpen) {
       recordABVisitor();
       const originalOverflow = document.body.style.overflow;
@@ -76,6 +79,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
   const ivaAmount = requiresFactura ? Math.round(subtotal * 0.16) : 0;
   const grandTotal = subtotal + ivaAmount;
 
+  const modalRef = useModalFocus(isOpen, onClose);
   if (!isOpen) return null;
 
   const focusAndAlert = (fieldId: string, fieldName: string, message: string) => {
@@ -185,7 +189,8 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
     const saleOrder = buildSaleRecord('Transferencia SPEI');
 
     // Register in Admin store and send email notification
-    await sendOrderNotificationEmail({ order: saleOrder, currency });
+    try { await sendOrderNotificationEmail({ order: saleOrder, currency }); }
+    catch (error) { setErrorMessage(error instanceof Error ? error.message : 'No se pudo guardar la solicitud.'); setIsProcessing(false); return; }
 
     // Build structured WhatsApp message with customer & equipment details
     let msg = `*NUEVO PEDIDO - MAQUINARIA RENTERIA*\n`;
@@ -242,18 +247,19 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
     setIsProcessing(true);
     setErrorMessage('');
     try {
+      const body = {
+        currency, paymentType: 'full', requiresInvoice: requiresFactura,
+        expectedTotal: Math.round(grandTotal * 100),
+        customer: { name: clientName, phone: clientPhone, email: clientEmail,
+          address: clientAddress, city: clientCity, zip: clientCP, rfc: clientRFC, businessName: clientRazonSocial },
+        items: items.map(item => ({ machineId: item.machine.id, variantId: item.selectedVariant?.id, quantity: item.quantity })),
+      };
+      const fingerprint = JSON.stringify(body);
+      if (paymentAttempt.current.fingerprint !== fingerprint) paymentAttempt.current = { fingerprint, id: crypto.randomUUID() };
       const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          currency, paymentType: 'full', requiresInvoice: requiresFactura,
-          expectedTotal: Math.round(grandTotal * 100),
-          customer: { name: clientName, phone: clientPhone, email: clientEmail,
-            address: clientAddress, city: clientCity, zip: clientCP,
-            rfc: clientRFC, businessName: clientRazonSocial },
-          items: items.map(item => ({ machineId: item.machine.id,
-            variantId: item.selectedVariant?.id, quantity: item.quantity })),
-        }),
+        body: JSON.stringify({ ...body, requestId: paymentAttempt.current.id }),
       });
       const data = await response.json();
       if (!response.ok || !data.checkoutUrl) throw new Error(data.error || 'No se pudo abrir el pago seguro.');
@@ -268,7 +274,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden font-sans">
+    <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Carrito de compra" className="fixed inset-0 z-50 overflow-hidden font-sans">
       {/* Backdrop */}
       <div 
         onClick={onClose}
@@ -445,7 +451,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
+                      <label htmlFor="cart-input-email" className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
                         Correo Electrónico (para comprobante)
                       </label>
                       <input
@@ -468,7 +474,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div className="sm:col-span-2">
-                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
+                      <label htmlFor="cart-input-address" className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
                         Dirección de Entrega (Calle y número)
                       </label>
                       <input
@@ -485,7 +491,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
+                      <label htmlFor="cart-input-city" className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
                         Ciudad / Estado
                       </label>
                       <input
@@ -501,8 +507,8 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Código Postal</label>
-                      <input
+                      <label htmlFor="quotecartdrawer-4" className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Código Postal</label>
+                      <input id="quotecartdrawer-4"
                         type="text"
                         maxLength={5}
                         placeholder="C.P. (5 dígitos)"
@@ -513,8 +519,8 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Notas especiales</label>
-                      <input
+                      <label htmlFor="quotecartdrawer-5" className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Notas especiales</label>
+                      <input id="quotecartdrawer-5"
                         type="text"
                         placeholder="Ej. Horario de recepción"
                         value={clientNotes}

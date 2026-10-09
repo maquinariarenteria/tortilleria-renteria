@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AdminTab } from '../../types/admin';
-import { isAdminAuthenticated, setAdminAuthenticated, getStoredQuotes } from '../../utils/adminStore';
+import { setAdminAuthenticated, getStoredQuotes, refreshAdminStore } from '../../utils/adminStore';
+import { storeRequest } from '../../services/storeApi';
 import { AdminHeader } from './AdminHeader';
 import { AdminNavbar } from './AdminNavbar';
 import { AdminAuthModal } from './AdminAuthModal';
@@ -24,34 +25,49 @@ interface AdminPanelProps {
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(isAdminAuthenticated());
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [syncError, setSyncError] = useState('');
   const [activeTab, setActiveTab] = useState<AdminTab>('ajustes'); // default to 'ajustes' as in user's screenshot
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [pendingQuotesCount, setPendingQuotesCount] = useState<number>(() => {
     const quotes = getStoredQuotes();
-    return quotes.filter(q => q.status === 'Nueva').length || 1;
+    return quotes.filter(q => q.status === 'Nueva').length;
   });
 
   useEffect(() => {
-    const handleAuthChange = () => {
-      setIsAuthenticated(isAdminAuthenticated());
+    let active = true;
+    const check = async () => {
+      try { await storeRequest('/api/admin/verify'); await refreshAdminStore(); if (active) setIsAuthenticated(true); }
+      catch { if (active) { setIsAuthenticated(false); } }
+      finally { if (active) setCheckingSession(false); }
     };
+    void check();
 
     const handleQuotesUpdate = () => {
       const quotes = getStoredQuotes();
       setPendingQuotesCount(quotes.filter(q => q.status === 'Nueva').length);
     };
 
-    window.addEventListener('mr_auth_changed', handleAuthChange);
+
     window.addEventListener('mr_quotes_updated', handleQuotesUpdate);
 
     return () => {
-      window.removeEventListener('mr_auth_changed', handleAuthChange);
+      active = false;
+
       window.removeEventListener('mr_quotes_updated', handleQuotesUpdate);
     };
   }, []);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const sync = () => { if (document.visibilityState === 'visible') void refreshAdminStore().then(() => setSyncError('')).catch(e => { setSyncError(e.message); if (e.status === 401) { setAdminAuthenticated(false); setIsAuthenticated(false); } }); };
+    sync(); const timer = window.setInterval(sync, 30000);
+    window.addEventListener('focus', sync);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', sync); };
+  }, [isAuthenticated]);
 
   const handleRefresh = () => {
+    void refreshAdminStore().catch(e => setSyncError(e.message));
     setIsRefreshing(true);
     setTimeout(() => {
       setIsRefreshing(false);
@@ -63,13 +79,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
     }, 600);
   };
 
-  const handleLogout = () => {
-    setAdminAuthenticated(false);
-    setIsAuthenticated(false);
-    onExit();
+  const handleLogout = async () => {
+    try { await storeRequest('/api/admin/logout', { method: 'POST', body: '{}' }); setAdminAuthenticated(false); setIsAuthenticated(false); onExit(); }
+    catch (error) { setSyncError(error instanceof Error ? error.message : 'No se pudo cerrar la sesión. Intenta nuevamente.'); }
   };
 
   // If not authenticated, display secure Cloudflare modal
+  if (checkingSession) return <p role="status" className="p-8">Comprobando sesión…</p>;
   if (!isAuthenticated) {
     return (
       <AdminAuthModal
@@ -98,6 +114,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
 
       {/* 3. Main Body: Active Tab Content */}
       <main className="flex-1 overflow-y-auto">
+        {syncError && <p role="alert" className="p-4 text-red-700">{syncError}</p>}
         {activeTab === 'resumen' && <ResumenTab onNavigateTab={(t) => setActiveTab(t)} />}
         {activeTab === 'cotizaciones' && <CotizacionesTab />}
         {activeTab === 'citas' && <CitasTab />}

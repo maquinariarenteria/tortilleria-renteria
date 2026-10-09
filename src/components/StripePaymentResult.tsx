@@ -1,18 +1,21 @@
+import { useModalFocus } from '../hooks/useModalFocus';
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '../utils/formatters';
 import { recordABConversion } from '../utils/adminStore';
 
 type PaymentStatus = { status: string; folio: string; currency: 'MXN' | 'USD'; paymentType: 'full'; amountPaid: number; balanceDue: number };
-export function StripePaymentResult() {
+export function StripePaymentResult({ onPaid }: { onPaid?: () => void }) {
   const [reference] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return { payment: params.get('payment'), sessionId: params.get('session_id'), token: params.get('token') };
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    return { payment: params.get('payment'), sessionId: params.get('session_id'), token: fragment.get('stripe_token') || params.get('token') };
   });
   const [result, setResult] = useState<PaymentStatus | null>(null);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [visible, setVisible] = useState(!!reference.payment);
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+  const modalRef = useModalFocus(visible, () => setVisible(false));
   const copyFolio = async () => {
     if (!result) return;
     try {
@@ -27,6 +30,7 @@ export function StripePaymentResult() {
     // Remove the private return token before the customer visits other links.
     const current = new URL(window.location.href);
     ['payment', 'session_id', 'token'].forEach(key => current.searchParams.delete(key));
+    if (current.hash.startsWith('#stripe_token=')) current.hash = '';
     window.history.replaceState(null, '', current.pathname + current.search + current.hash);
     if (reference.payment !== 'success') return;
     if (!reference.sessionId || !reference.token) {
@@ -35,13 +39,15 @@ export function StripePaymentResult() {
     }
     const controller = new AbortController();
     setError('');
-    fetch(`/api/stripe/session?${new URLSearchParams({ session_id: reference.sessionId, token: reference.token })}`, { signal: controller.signal })
+    fetch('/api/stripe/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: reference.sessionId, token: reference.token }), signal: controller.signal })
       .then(async response => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'No se pudo verificar el pago.');
         setResult(data);
         if (data.status === 'paid') {
           sessionStorage.removeItem('mr_stripe_cart');
+          sessionStorage.removeItem('mr_cart');
+          onPaid?.();
           const key = `mr_stripe_conversion_${reference.sessionId}`;
           if (!sessionStorage.getItem(key)) { recordABConversion('B'); sessionStorage.setItem(key, '1'); }
         }
@@ -51,7 +57,7 @@ export function StripePaymentResult() {
   }, [reference, retry]);
   if (!visible) return null;
   const paid = result?.status === 'paid';
-  return <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="stripe-result-title">
+  return <div ref={modalRef} className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="stripe-result-title">
     <div className="bg-white rounded-2xl p-6 max-w-lg w-full space-y-4 text-slate-900">
       <h2 id="stripe-result-title" className="text-xl font-bold">{reference.payment === 'cancel' ? 'Pago cancelado' : paid ? 'Pago completo confirmado' : 'Verificación del pago'}</h2>
       {reference.payment === 'cancel' ? <p>Tu carrito está disponible para volver a intentar el pago. Si llegaste a completar un cobro, contacta al asesor para verificarlo.</p> : <>

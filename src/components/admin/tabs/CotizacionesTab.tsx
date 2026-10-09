@@ -35,22 +35,26 @@ export const CotizacionesTab: React.FC = () => {
     setEditStatus(quote.status);
   };
 
-  const handleSaveDetail = (e: React.FormEvent) => {
+  const handleSaveDetail = async (e: React.FormEvent) => {
+    try {
     e.preventDefault();
     if (!selectedQuote) return;
-    const updated = updateStoredQuoteStatus(selectedQuote.id, editStatus, editNotes);
+    const updated = await updateStoredQuoteStatus(selectedQuote.id, editStatus, editNotes);
     setQuotes(updated);
     setSelectedQuote(null);
+    } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo guardar en el servidor."); }
   };
 
-  const handleDeleteQuote = (id: string, folio: string) => {
+  const handleDeleteQuote = async (id: string, folio: string) => {
+    try {
     if (window.confirm(`¿Deseas eliminar la cotización ${folio} de Cloudflare para liberar espacio?`)) {
-      const updated = deleteStoredQuote(id);
+      const updated = await deleteStoredQuote(id);
       setQuotes(updated);
       if (selectedQuote?.id === id) {
         setSelectedQuote(null);
       }
     }
+    } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo guardar en el servidor."); }
   };
 
   return (

@@ -1,5 +1,6 @@
 import { MachineProduct } from '../types';
 import { MACHINES_DATA } from '../data/machines';
+import { storeRequest, writeRecord, removeRecord } from '../services/storeApi';
 import { 
   CustomerQuote, Appointment, AdminSaleOrder, 
   Opportunity, ABExperiment, ClickHotspot, UserJourneyPath, 
@@ -219,9 +220,10 @@ export function getSiteConfig(): SiteConfig {
   return DEFAULT_CONFIG;
 }
 
-export function saveSiteConfig(config: Partial<SiteConfig>): SiteConfig {
+export async function saveSiteConfig(config: Partial<SiteConfig>): Promise<SiteConfig> {
   const current = getSiteConfig();
   const updated = { ...current, ...config };
+  await storeRequest('/api/admin/site-config', { method: 'POST', body: JSON.stringify(updated) });
   localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(updated));
   window.dispatchEvent(new Event('mr_config_updated'));
   return updated;
@@ -240,29 +242,30 @@ export function getStoredMachines(): MachineProduct[] {
   return MACHINES_DATA;
 }
 
-export function saveStoredMachines(machines: MachineProduct[]): void {
+export async function saveStoredMachines(machines: MachineProduct[]): Promise<void> {
+  await storeRequest('/api/admin/machines', { method: 'POST', body: JSON.stringify({ machines }) });
   localStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(machines));
   window.dispatchEvent(new Event('mr_machines_updated'));
 }
 
-export function updateStoredMachine(machineId: string, updates: Partial<MachineProduct>): MachineProduct[] {
+export async function updateStoredMachine(machineId: string, updates: Partial<MachineProduct>): Promise<MachineProduct[]> {
   const machines = getStoredMachines();
   const updated = machines.map((m) => (m.id === machineId ? { ...m, ...updates } : m));
-  saveStoredMachines(updated);
+  await saveStoredMachines(updated);
   return updated;
 }
 
-export function addStoredMachine(newMachine: MachineProduct): MachineProduct[] {
+export async function addStoredMachine(newMachine: MachineProduct): Promise<MachineProduct[]> {
   const machines = getStoredMachines();
   const updated = [newMachine, ...machines];
-  saveStoredMachines(updated);
+  await saveStoredMachines(updated);
   return updated;
 }
 
-export function deleteStoredMachine(machineId: string): MachineProduct[] {
+export async function deleteStoredMachine(machineId: string): Promise<MachineProduct[]> {
   const machines = getStoredMachines();
   const updated = machines.filter((m) => m.id !== machineId);
-  saveStoredMachines(updated);
+  await saveStoredMachines(updated);
   return updated;
 }
 
@@ -271,7 +274,7 @@ export function deleteStoredMachine(machineId: string): MachineProduct[] {
 // ------------------------------------------
 export function getStoredQuotes(): CustomerQuote[] {
   try {
-    const saved = localStorage.getItem(STORAGE_KEYS.QUOTES);
+    const saved = sessionStorage.getItem(STORAGE_KEYS.QUOTES);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed)) return parsed;
@@ -283,7 +286,7 @@ export function getStoredQuotes(): CustomerQuote[] {
 }
 
 export function saveStoredQuotes(quotes: CustomerQuote[]): void {
-  localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes));
+  sessionStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes));
   window.dispatchEvent(new Event('mr_quotes_updated'));
 }
 
@@ -314,14 +317,17 @@ export function addStoredQuote(quote: CustomerQuote): CustomerQuote[] {
   return updated;
 }
 
-export function updateStoredQuoteStatus(quoteId: string, status: CustomerQuote['status'], notes?: string): CustomerQuote[] {
+export async function updateStoredQuoteStatus(quoteId: string, status: CustomerQuote['status'], notes?: string): Promise<CustomerQuote[]> {
   const current = getStoredQuotes();
   const updated = current.map(q => q.id === quoteId ? { ...q, status, ...(notes !== undefined ? { notes } : {}) } : q);
+  const changed = updated.find(q => q.id === quoteId);
+  if (changed) await writeRecord('quotes', changed);
   saveStoredQuotes(updated);
   return updated;
 }
 
-export function deleteStoredQuote(quoteId: string): CustomerQuote[] {
+export async function deleteStoredQuote(quoteId: string): Promise<CustomerQuote[]> {
+  await removeRecord('quotes', quoteId);
   const current = getStoredQuotes();
   const updated = current.filter(q => q.id !== quoteId);
   saveStoredQuotes(updated);
@@ -334,7 +340,7 @@ export function deleteStoredQuote(quoteId: string): CustomerQuote[] {
 // ------------------------------------------
 export function getStoredAppointments(): Appointment[] {
   try {
-    const saved = localStorage.getItem(STORAGE_KEYS.APPOINTMENTS);
+    const saved = sessionStorage.getItem(STORAGE_KEYS.APPOINTMENTS);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed)) return parsed;
@@ -345,29 +351,33 @@ export function getStoredAppointments(): Appointment[] {
   return INITIAL_APPOINTMENTS;
 }
 
-export function saveStoredAppointments(appointments: Appointment[]): void {
-  localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(appointments));
+export async function saveStoredAppointments(appointments: Appointment[]): Promise<void> {
+  const current = getStoredAppointments();
+  for (const record of appointments) if (JSON.stringify(current.find(a => a.id === record.id)) !== JSON.stringify(record)) await writeRecord('appointments', record);
+  sessionStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(appointments));
   window.dispatchEvent(new Event('mr_appointments_updated'));
 }
 
-export function addStoredAppointment(appointment: Appointment): Appointment[] {
+export async function addStoredAppointment(appointment: Appointment): Promise<Appointment[]> {
   const appointments = getStoredAppointments();
   const updated = [appointment, ...appointments];
-  saveStoredAppointments(updated);
+  await saveStoredAppointments(updated);
   return updated;
 }
 
-export function updateStoredAppointmentStatus(id: string, status: Appointment['status'], notes?: string): Appointment[] {
+export async function updateStoredAppointmentStatus(id: string, status: Appointment['status'], notes?: string): Promise<Appointment[]> {
   const current = getStoredAppointments();
   const updated = current.map(a => a.id === id ? { ...a, status, ...(notes !== undefined ? { notes } : {}) } : a);
-  saveStoredAppointments(updated);
+  await saveStoredAppointments(updated);
   return updated;
 }
 
-export function deleteStoredAppointment(appointmentId: string): Appointment[] {
+export async function deleteStoredAppointment(appointmentId: string): Promise<Appointment[]> {
+  await removeRecord('appointments', appointmentId);
   const current = getStoredAppointments();
   const updated = current.filter(a => a.id !== appointmentId);
-  saveStoredAppointments(updated);
+  sessionStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(updated));
+  window.dispatchEvent(new Event('mr_appointments_updated'));
   recalculateStorageFootprint();
   return updated;
 }
@@ -377,7 +387,7 @@ export function deleteStoredAppointment(appointmentId: string): Appointment[] {
 // ------------------------------------------
 export function getStoredSales(): AdminSaleOrder[] {
   try {
-    const saved = localStorage.getItem(STORAGE_KEYS.SALES);
+    const saved = sessionStorage.getItem(STORAGE_KEYS.SALES);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed)) return parsed;
@@ -389,7 +399,7 @@ export function getStoredSales(): AdminSaleOrder[] {
 }
 
 export function saveStoredSales(sales: AdminSaleOrder[]): void {
-  localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(sales));
+  sessionStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(sales));
   window.dispatchEvent(new Event('mr_sales_updated'));
 }
 
@@ -447,7 +457,7 @@ export function updateSaleStatus(folio: string, manufacturingStatus: AdminSaleOr
 // ------------------------------------------
 export function getStoredOpportunities(): Opportunity[] {
   try {
-    const saved = localStorage.getItem(STORAGE_KEYS.OPPORTUNITIES);
+    const saved = sessionStorage.getItem(STORAGE_KEYS.OPPORTUNITIES);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed)) return parsed;
@@ -459,7 +469,7 @@ export function getStoredOpportunities(): Opportunity[] {
 }
 
 export function saveStoredOpportunities(opps: Opportunity[]): void {
-  localStorage.setItem(STORAGE_KEYS.OPPORTUNITIES, JSON.stringify(opps));
+  sessionStorage.setItem(STORAGE_KEYS.OPPORTUNITIES, JSON.stringify(opps));
   window.dispatchEvent(new Event('mr_opps_updated'));
 }
 
@@ -669,7 +679,7 @@ export function getStoredWebHealth(): WebHealthMetrics {
 // ------------------------------------------
 export function getStoredSecurityLogs(): SecurityAuditLog[] {
   try {
-    const saved = localStorage.getItem(STORAGE_KEYS.SECURITY);
+    const saved = sessionStorage.getItem(STORAGE_KEYS.SECURITY);
     if (saved) return JSON.parse(saved);
   } catch (e) {
     console.error('Error loading security logs:', e);
@@ -678,7 +688,7 @@ export function getStoredSecurityLogs(): SecurityAuditLog[] {
 }
 
 export function saveStoredSecurityLogs(logs: SecurityAuditLog[]): void {
-  localStorage.setItem(STORAGE_KEYS.SECURITY, JSON.stringify(logs));
+  sessionStorage.setItem(STORAGE_KEYS.SECURITY, JSON.stringify(logs));
 }
 
 export function recordSecurityAudit(
@@ -728,7 +738,7 @@ export function saveStoredSettings(settings: Partial<AdminSettingsConfig>): Admi
 // ------------------------------------------
 export function isAdminAuthenticated(): boolean {
   try {
-    const isAuth = localStorage.getItem(STORAGE_KEYS.AUTH);
+    const isAuth = sessionStorage.getItem(STORAGE_KEYS.AUTH);
     return isAuth === 'true';
   } catch {
     return false;
@@ -736,19 +746,48 @@ export function isAdminAuthenticated(): boolean {
 }
 
 export function setAdminAuthenticated(auth: boolean, token?: string): void {
+  localStorage.removeItem(STORAGE_KEYS.AUTH);
+  localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
   if (auth) {
-    localStorage.setItem(STORAGE_KEYS.AUTH, 'true');
-    if (token) localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+    sessionStorage.setItem(STORAGE_KEYS.AUTH, 'true');
     recordSecurityAudit('Inicio de sesión exitoso', 'Permitido');
   } else {
-    localStorage.removeItem(STORAGE_KEYS.AUTH);
-    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    sessionStorage.removeItem(STORAGE_KEYS.AUTH);
+    sessionStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    for (const key of [STORAGE_KEYS.QUOTES, STORAGE_KEYS.APPOINTMENTS, STORAGE_KEYS.SALES, STORAGE_KEYS.OPPORTUNITIES, STORAGE_KEYS.SECURITY]) { sessionStorage.removeItem(key); localStorage.removeItem(key); }
   }
   window.dispatchEvent(new Event('mr_auth_changed'));
 }
 
 export function getAdminToken(): string | null {
-  return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+  // Authentication is sent by the browser as a Secure, HttpOnly cookie.
+  return null;
+}
+
+export async function refreshPublicStore() {
+  const [catalog, site] = await Promise.all([storeRequest('/api/catalog'), storeRequest('/api/site-config')]);
+  if (Array.isArray(catalog.machines)) { localStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(catalog.machines)); window.dispatchEvent(new Event('mr_machines_updated')); }
+  if (site.config) { localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify({ ...DEFAULT_CONFIG, ...site.config })); window.dispatchEvent(new Event('mr_config_updated')); }
+}
+export async function refreshAdminStore() {
+  const [quotes, appointments] = await Promise.all([storeRequest('/api/admin/records/quotes'), storeRequest('/api/admin/records/appointments')]);
+  // Migrate records previously stored only on this administrator's browser once.
+  for (const [kind, key, remote] of [['quotes', STORAGE_KEYS.QUOTES, quotes.records], ['appointments', STORAGE_KEYS.APPOINTMENTS, appointments.records]] as const) {
+    const legacy = localStorage.getItem(key);
+    if (legacy) {
+      const records = JSON.parse(legacy);
+      if (!Array.isArray(records)) throw new Error('Hay registros antiguos que requieren revisión.');
+      let complete = true;
+      for (const record of records) if (!remote.some((r: any) => r.id === record.id)) {
+        try { await writeRecord(kind, record); remote.push(record); }
+        catch (error) { if ((error as any).status !== 400) throw error; complete = false; console.warn('Un registro antiguo requiere revisión y se conserva en este navegador.'); }
+      }
+      if (complete) localStorage.removeItem(key);
+    }
+  }
+  sessionStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes.records));
+  sessionStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(appointments.records));
+  window.dispatchEvent(new Event('mr_quotes_updated')); window.dispatchEvent(new Event('mr_appointments_updated'));
 }
 
 // ------------------------------------------

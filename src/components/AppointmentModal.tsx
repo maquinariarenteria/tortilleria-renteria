@@ -1,3 +1,4 @@
+import { useModalFocus } from '../hooks/useModalFocus';
 import React, { useState } from 'react';
 import { Appointment } from '../types/admin';
 import { sendAppointmentNotificationEmail } from '../utils/emailService';
@@ -31,8 +32,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const [notes, setNotes] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [submittedAppointment, setSubmittedAppointment] = useState<Appointment | null>(null);
 
+  const modalRef = useModalFocus(isOpen, onClose);
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,10 +43,11 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     if (!name.trim() || !phone.trim() || !scheduledDate) return;
 
     setIsSubmitting(true);
+    setSubmitError('');
     recordHotspotClick('Agendar Cita / Demostración');
 
     const newAppointment: Appointment = {
-      id: `cita_${Date.now()}`,
+      id: crypto.randomUUID(),
       customerName: name.trim(),
       phone: phone.trim(),
       email: email.trim(),
@@ -51,16 +55,15 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       machineOfInterest: machineOfInterest.trim(),
       scheduledDate,
       scheduledTime,
-      status: 'Confirmada',
+      status: 'Pendiente',
       notes: `${city ? `Ciudad: ${city}. ` : ''}${notes.trim()}`,
       reminderSent: false,
     };
 
     // Dispatch email and register directly into Admin Citas Tab
-    await sendAppointmentNotificationEmail({ appointment: newAppointment });
-
-    setIsSubmitting(false);
-    setSubmittedAppointment(newAppointment);
+    try { const result = await sendAppointmentNotificationEmail({ appointment: newAppointment }); setSubmittedAppointment(result.appointment); }
+    catch (error) { setSubmitError(error instanceof Error ? error.message : 'No se pudo guardar tu solicitud. Intenta nuevamente.'); }
+    finally { setIsSubmitting(false); }
   };
 
   const handleOpenWhatsAppConfirmation = () => {
@@ -79,7 +82,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs font-sans animate-fadeIn">
+    <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Agendar cita con un asesor" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs font-sans animate-fadeIn">
       <div 
         className="relative w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden text-slate-900 max-h-[92vh] flex flex-col justify-between"
         onClick={(e) => e.stopPropagation()}
@@ -103,6 +106,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
           <button 
             onClick={onClose}
+            aria-label="Cerrar cita"
             className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition"
           >
             <X size={18} />
@@ -111,6 +115,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-4">
+          {submitError && <p role="alert" className="text-red-700 text-sm">{submitError}</p>}
           
           {submittedAppointment ? (
             <div className="py-6 text-center space-y-4">
@@ -120,10 +125,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
               <div className="space-y-1">
                 <h4 className="text-base font-black text-slate-900 uppercase">
-                  ¡Cita Registrada Exitosamente!
+                  ¡Solicitud de cita registrada!
                 </h4>
                 <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                  Tu cita para el <b>{submittedAppointment.scheduledDate}</b> a las <b>{submittedAppointment.scheduledTime} hrs</b> ha sido guardada y notificada a nuestro equipo comercial.
+                  Tu cita para el <b>{submittedAppointment.scheduledDate}</b> a las <b>{submittedAppointment.scheduledTime} hrs</b> quedó guardada en nuestro sistema. La disponibilidad está pendiente de confirmación con el asesor.
                 </p>
               </div>
 
@@ -174,8 +179,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
               {/* Client Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Tu Nombre Completo *</label>
-                  <input
+                  <label htmlFor="appointmentmodal-1" className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Tu Nombre Completo *</label>
+                  <input id="appointmentmodal-1"
                     type="text"
                     required
                     placeholder="Ej. Roberto Morales"
@@ -186,8 +191,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">WhatsApp / Teléfono *</label>
-                  <input
+                  <label htmlFor="appointmentmodal-2" className="block font-bold text-slate-700 uppercase text-[10px] mb-1">WhatsApp / Teléfono *</label>
+                  <input id="appointmentmodal-2"
                     type="tel"
                     required
                     placeholder="10 dígitos"
@@ -200,8 +205,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Correo Electrónico *</label>
-                  <input
+                  <label htmlFor="appointmentmodal-3" className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Correo Electrónico *</label>
+                  <input id="appointmentmodal-3"
                     type="email"
                     required
                     placeholder="tucorreo@empresa.com"
@@ -212,8 +217,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Ciudad y Estado</label>
-                  <input
+                  <label htmlFor="appointmentmodal-4" className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Ciudad y Estado</label>
+                  <input id="appointmentmodal-4"
                     type="text"
                     placeholder="Ej. Monterrey, N.L."
                     value={city}
@@ -255,8 +260,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
               {/* Machine Selection */}
               <div>
-                <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Máquina o Tema de Interés</label>
-                <select
+                <label htmlFor="appointmentmodal-5" className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Máquina o Tema de Interés</label>
+                <select id="appointmentmodal-5"
                   value={machineOfInterest}
                   onChange={(e) => setMachineOfInterest(e.target.value)}
                   className="w-full p-2.5 border border-slate-300 rounded-lg focus:border-[#2563eb] focus:outline-none bg-white font-medium"
@@ -274,8 +279,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
               {/* Date & Time */}
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Fecha Deseada *</label>
-                  <input
+                  <label htmlFor="appointmentmodal-6" className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Fecha Deseada *</label>
+                  <input id="appointmentmodal-6"
                     type="date"
                     required
                     min={new Date().toISOString().split('T')[0]}
@@ -286,8 +291,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Horario Preferido</label>
-                  <select
+                  <label htmlFor="appointmentmodal-7" className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Horario Preferido</label>
+                  <select id="appointmentmodal-7"
                     value={scheduledTime}
                     onChange={(e) => setScheduledTime(e.target.value)}
                     className="w-full p-2.5 border border-slate-300 rounded-lg focus:border-[#2563eb] focus:outline-none bg-white font-medium"
@@ -302,8 +307,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Notas o Preguntas para el Vendedor</label>
-                <textarea
+                <label htmlFor="appointmentmodal-8" className="block font-bold text-slate-700 uppercase text-[10px] mb-1">Notas o Preguntas para el Vendedor</label>
+                <textarea id="appointmentmodal-8"
                   rows={2}
                   placeholder="Ej. Llevaré harina para probar receta, o requiero cotización con flete a mi ciudad..."
                   value={notes}

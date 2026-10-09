@@ -17,7 +17,8 @@ export const PreciosOfertasTab: React.FC = () => {
     setOffers(updated);
   };
 
-  const handleSaveAll = (e: React.FormEvent) => {
+  const handleSaveAll = async (e: React.FormEvent) => {
+    try {
     e.preventDefault();
     saveStoredPriceOffers(offers);
 
@@ -34,9 +35,10 @@ export const PreciosOfertasTab: React.FC = () => {
       }
       return m;
     });
-    saveStoredMachines(updatedMachines);
+    await saveStoredMachines(updatedMachines);
 
     showToast('¡Precios actualizados en la web y catálogo en vivo!');
+    } catch (error) { showToast(error instanceof Error ? error.message : "No se pudo guardar en el servidor."); }
   };
 
   return (

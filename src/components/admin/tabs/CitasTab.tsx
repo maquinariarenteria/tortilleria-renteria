@@ -25,7 +25,8 @@ export const CitasTab: React.FC = () => {
   const [scheduledTime, setScheduledTime] = useState('11:00');
   const [notes, setNotes] = useState('');
 
-  const handleCreateAppointment = (e: React.FormEvent) => {
+  const handleCreateAppointment = async (e: React.FormEvent) => {
+    try {
     e.preventDefault();
     if (!customerName || !phone || !scheduledDate) return;
 
@@ -44,7 +45,7 @@ export const CitasTab: React.FC = () => {
     };
 
     const updated = [newApt, ...appointments];
-    saveStoredAppointments(updated);
+    await saveStoredAppointments(updated);
     setAppointments(updated);
     setShowNewModal(false);
 
@@ -53,19 +54,24 @@ export const CitasTab: React.FC = () => {
     setPhone('');
     setEmail('');
     setNotes('');
+    } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo guardar en el servidor."); }
   };
 
-  const handleToggleStatus = (id: string, newStatus: Appointment['status']) => {
+  const handleToggleStatus = async (id: string, newStatus: Appointment['status']) => {
+    try {
     const updated = appointments.map(a => a.id === id ? { ...a, status: newStatus } : a);
-    saveStoredAppointments(updated);
+    await saveStoredAppointments(updated);
     setAppointments(updated);
+    } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo guardar en el servidor."); }
   };
 
-  const handleDeleteAppointment = (id: string, name: string) => {
+  const handleDeleteAppointment = async (id: string, name: string) => {
+    try {
     if (window.confirm(`¿Deseas eliminar la cita de "${name}" de Cloudflare para liberar espacio?`)) {
-      const updated = deleteStoredAppointment(id);
+      const updated = await deleteStoredAppointment(id);
       setAppointments(updated);
     }
+    } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo guardar en el servidor."); }
   };
 
   return (

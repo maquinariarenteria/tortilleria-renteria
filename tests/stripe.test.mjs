@@ -9,45 +9,13 @@ await build({ entryPoints: ['src/worker/index.ts'], outfile: new URL('worker.mjs
 const { default: worker } = await import(new URL('worker.mjs', dir));
 after(() => rm(dir, { recursive: true, force: true }));
 
-class Database {
-  rows = new Map();
-  price = null;
-  paidTransitions = 0;
-  prepare(sql) {
-    const db = this;
-    let args = [];
-    return {
-      bind(...values) { args = values; return this; },
-      async first() {
-        if (sql.includes('FROM machines')) return db.price;
-        if (sql.includes('WHERE session_id')) return [...db.rows.values()].find(row => row.session_id === args[0] && (!sql.includes('access_token =') || row.access_token === args[1])) || null;
-        if (sql.includes('WHERE id')) return db.rows.get(args[0]) || null;
-        throw new Error('Unexpected SQL: ' + sql);
-      },
-      async all() { return { results: [...db.rows.values()].filter(row => row.payment_status === 'paid') }; },
-      async run() {
-        if (sql.startsWith('INSERT INTO stripe_orders')) {
-          const [id, access_token, order_json, currency, payment_type, amount_due, total_amount, created_at] = args;
-          db.rows.set(id, { id, access_token, order_json, currency, payment_type, amount_due, total_amount, created_at, payment_status: 'pending' });
-        } else if (sql.includes('SET session_id')) db.rows.get(args[1]).session_id = args[0];
-        else if (sql.includes("SET payment_status = 'paid'")) {
-          const row = db.rows.get(args[1]);
-          if (row && row.payment_status !== 'paid') { row.payment_status = 'paid'; row.paid_at = args[0]; db.paidTransitions++; }
-        } else if (sql.includes('SET payment_status = ?')) {
-          const row = [...db.rows.values()].find(row => row.session_id === args[1]);
-          if (row && row.payment_status !== 'paid') row.payment_status = args[0];
-        } else throw new Error('Unexpected SQL: ' + sql);
-        return { success: true };
-      },
-    };
-  }
-}
+import { Database } from './database.mjs';
 const customer = { name: 'Cliente Prueba', phone: '6391234567', email: 'test@example.com', address: 'Calle 1', city: 'Delicias' };
 // Read the actual catalog so tests include real variant formulas, not arbitrary browser prices.
 await build({ entryPoints: ['src/data/machines.ts'], outfile: new URL('catalog.mjs', dir).pathname, bundle: true, platform: 'node', format: 'esm' });
 const { MACHINES_DATA } = await import(new URL('catalog.mjs', dir));
 const product = MACHINES_DATA[0];
-function payload(options = {}) { return { currency: 'MXN', paymentType: 'full', requiresInvoice: false, expectedTotal: product.priceMXN * 100, customer, items: [{ machineId: product.id, quantity: 1 }], ...options }; }
+function payload(options = {}) { return { requestId: crypto.randomUUID(), currency: 'MXN', paymentType: 'full', requiresInvoice: false, expectedTotal: product.priceMXN * 100, customer, items: [{ machineId: product.id, quantity: 1 }], ...options }; }
 function setup() {
   const DB = new Database();
   const env = { DB, STRIPE_SECRET_KEY: 'test_fixture_only', STRIPE_WEBHOOK_SECRET: 'test_signing_fixture_only', ADMIN_PASSWORD: 'test-admin-password', SITE_URL: 'https://shop.example.com', ASSETS: { fetch: async () => new Response('asset') } };
@@ -64,7 +32,7 @@ async function withStripe(callback) {
       const params = new URLSearchParams(init.body);
       calls.push(params);
       const id = `cs_test_${calls.length}`;
-      const session = { id, url: 'https://checkout.stripe.com/c/pay/' + id, amount_total: Number(params.get('line_items[0][price_data][unit_amount]')), currency: params.get('line_items[0][price_data][currency]'), client_reference_id: params.get('client_reference_id'), payment_status: 'unpaid' };
+      const session = { id, livemode: false, status: 'open', url: 'https://checkout.stripe.com/c/pay/' + id, amount_total: Number(params.get('line_items[0][price_data][unit_amount]')), currency: params.get('line_items[0][price_data][currency]'), client_reference_id: params.get('client_reference_id'), payment_status: 'unpaid' };
       sessions.set(id, session);
       return new Response(JSON.stringify(session), { headers: { 'Content-Type': 'application/json' } });
     }
@@ -106,7 +74,7 @@ test('Checkout uses server prices for 100% payment, MXN/USD, IVA and variants', 
   }
 }));
 test('D1 price override rejects stale browser total', async () => {
-  const { env, DB } = setup(); DB.price = { price_mxn: product.priceMXN + 1000, price_usd: product.priceUSD };
+  const { env, DB } = setup(); DB.sqlite.prepare("INSERT INTO app_records(kind,id,data_json,updated_at) VALUES('catalog','main',?,?)").run(JSON.stringify(MACHINES_DATA.map(m=>m.id===product.id?{...m,priceMXN:m.priceMXN+1000}:m)),new Date().toISOString());
   assert.equal((await worker.fetch(request('/api/stripe/create-checkout-session', payload()), env)).status, 400);
 });
 test('Webhook signature, delayed payments, duplicates, amount mismatch and status access', async () => withStripe(async ({ sessions }) => {
@@ -118,17 +86,17 @@ test('Webhook signature, delayed payments, duplicates, amount mismatch and statu
   assert.equal((await worker.fetch(request('/api/stripe/session?session_id=' + session.id + '&token=fake'), env)).status, 404);
   assert.equal((await worker.fetch(await eventRequest('checkout.session.completed', session, 'wrong'), env)).status, 400);
   assert.equal((await worker.fetch(await eventRequest('checkout.session.completed', session), env)).status, 200);
-  assert.equal(row.payment_status, 'pending');
+  assert.equal(DB.rows.get(row.id).payment_status, 'pending');
   assert.equal((await (await worker.fetch(request(statusPath), env)).json()).status, 'pending');
   session.payment_status = 'paid';
   const mismatch = { ...session, amount_total: 1 };
   assert.equal((await worker.fetch(await eventRequest('checkout.session.async_payment_succeeded', mismatch), env)).status, 502);
-  assert.equal(row.payment_status, 'pending');
+  assert.equal(DB.rows.get(row.id).payment_status, 'pending');
   assert.equal((await worker.fetch(await eventRequest('checkout.session.async_payment_succeeded', session), env)).status, 200);
   assert.equal((await worker.fetch(await eventRequest('checkout.session.completed', session), env)).status, 200);
   assert.equal(DB.paidTransitions, 1);
   await worker.fetch(await eventRequest('checkout.session.expired', session), env);
-  assert.equal(row.payment_status, 'paid');
+  assert.equal(DB.rows.get(row.id).payment_status, 'paid');
   const result = await (await worker.fetch(request(statusPath), env)).json();
   assert.equal(result.status, 'paid');
   assert.equal(result.amountPaid, product.priceMXN);

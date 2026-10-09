@@ -46,7 +46,7 @@ export function useAdminSales() {
     };
   }, []);
 
-  const remoteFolios = new Set(remoteSales.map(sale => sale.folio));
-  const orders = [...remoteSales, ...sales.filter(sale => !remoteFolios.has(sale.folio))];
+  // Only payments verified by the backend count as recorded sales.
+  const orders = remoteSales;
   return { orders, sales, setSales, remoteSales, setRemoteSales, remoteError, setRemoteError, loading };
 }

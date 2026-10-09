@@ -1,152 +1,26 @@
-import { getAdminToken, setAdminAuthenticated } from '../utils/adminStore';
-
-export interface LoginResponse {
-  success: boolean;
-  token?: string;
-  error?: string;
-  source?: 'cloudflare_worker' | 'local_fallback';
-  secretKeyName?: string;
-}
-
-export interface UploadResponse {
-  success: boolean;
-  url?: string;
-  key?: string;
-  error?: string;
-}
-
-export const CLOUDFLARE_CONFIG_INFO = {
-  secretName: 'ADMIN_PASSWORD',
-  jwtSecretName: 'ADMIN_JWT_SECRET',
-  d1BindingName: 'DB',
-  d1DatabaseName: 'tortilleria-renteria-db',
-  r2BindingName: 'MEDIA_BUCKET',
-  r2BucketName: 'tortilleria-renteria-media',
-};
-
+import { setAdminAuthenticated } from '../utils/adminStore';
+import { storeRequest } from './storeApi';
+export interface LoginResponse { success: boolean; token?: string; error?: string; source?: 'cloudflare_worker' | 'local_fallback'; secretKeyName?: string }
+export interface UploadResponse { success: boolean; url?: string; key?: string; error?: string }
+export const CLOUDFLARE_CONFIG_INFO = { secretName:'ADMIN_PASSWORD', jwtSecretName:'ADMIN_JWT_SECRET',d1BindingName:'DB',d1DatabaseName:'tortilleria-renteria-db',r2BindingName:'MEDIA_BUCKET',r2BucketName:'tortilleria-renteria-media' };
 export class AdminService {
-  /**
-   * Attempts to log in against the Cloudflare Worker backend.
-   * If the worker is running and has the secret ADMIN_PASSWORD configured, it validates it there.
-   * If the worker is offline or in local dev preview, it falls back cleanly to the suggested key.
-   */
   static async login(password: string): Promise<LoginResponse> {
-    try {
-      const response = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: password.trim() }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.token) {
-          setAdminAuthenticated(true, data.token);
-          return { success: true, token: data.token, source: 'cloudflare_worker' };
-        }
-      } else if (response.status === 401) {
-        const data = await response.json().catch(() => ({}));
-        return { 
-          success: false, 
-          error: data.error || 'Clave de acceso incorrecta.',
-          secretKeyName: CLOUDFLARE_CONFIG_INFO.secretName
-        };
-      }
-    } catch {
-      // Worker endpoint not available (e.g. running in standard vite dev without worker)
-    }
-
-    return { success: false, error: 'No se pudo iniciar sesión. Verifica el servidor y ADMIN_PASSWORD.' };
+    try { const data = await storeRequest('/api/admin/login', { method:'POST',body:JSON.stringify({password:password.trim()}) });
+      setAdminAuthenticated(true); return { success:true,source:'cloudflare_worker' };
+    } catch(error) { return {success:false,error:error instanceof Error?error.message:'No se pudo iniciar sesión.'}; }
   }
-
-  /**
-   * Upload an image to Cloudflare R2 via Worker endpoint.
-   * Falls back to base64 data URL for instant offline preview.
-   */
   static async uploadImageToR2(file: File): Promise<UploadResponse> {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const token = getAdminToken();
-      const response = await fetch('/api/admin/upload', {
-        method: 'POST',
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: formData,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return { success: true, url: data.url, key: data.key };
-      }
-    } catch (e) {
-      console.warn('R2 upload endpoint not reached, falling back to base64 preview:', e);
-    }
-
-    // Fallback: generate local base64
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        resolve({ success: true, url: reader.result as string });
-      };
-      reader.onerror = () => {
-        resolve({ success: false, error: 'Error al leer el archivo local.' });
-      };
-      reader.readAsDataURL(file);
-    });
+    try { const form = new FormData(); form.append('file', file);
+      const response = await fetch('/api/admin/upload', {method:'POST',body:form,credentials:'same-origin'});
+      const data = await response.json(); if(!response.ok)throw Error(data.error || 'No se pudo subir la imagen.'); return data;
+    } catch(error) { return {success:false,error:error instanceof Error?error.message:'No se pudo subir la imagen.'}; }
   }
-
-  /**
-   * Test sending a report to official email via Cloudflare Email Routing
-   */
-  static async sendTestReport(email: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const res = await fetch('/api/admin/send-test-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      if (res.ok) {
-        return { success: true, message: 'Reporte de prueba enviado exitosamente a tu correo oficial maquinariarenteria17@gmail.com.' };
-      }
-    } catch {}
-
-    // Free Email Routing delivery verification
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          message: `Prueba exitosa. Las cotizaciones y reportes se envían automáticamente y de forma 100% gratuita a ${email || 'maquinariarenteria17@gmail.com'} mediante Cloudflare Email Routing.`
-        });
-      }, 800);
-    });
+  static async sendTestReport(email: string): Promise<{success:boolean;message:string}> {
+    try { const data=await storeRequest('/api/admin/send-test-report',{method:'POST',body:JSON.stringify({email})}); return {success:true,message:data.message}; }
+    catch(error){return {success:false,message:error instanceof Error?error.message:'No se pudo enviar el reporte.'};}
   }
-
-  /**
-   * Free storage space in Cloudflare D1 by purging temporary logs
-   */
-  static async cleanupCloudflareD1(): Promise<{ success: boolean; freedKB: number; message: string }> {
-    try {
-      const token = getAdminToken();
-      const res = await fetch('/api/admin/cleanup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return { success: true, freedKB: data.freedKB || 45, message: data.message };
-      }
-    } catch {}
-
-    return {
-      success: true,
-      freedKB: 48,
-      message: 'Espacio liberado exitosamente en Cloudflare D1. Registros temporales eliminados manteniendo cotizaciones y catálogo intactos.'
-    };
+  static async cleanupCloudflareD1(): Promise<{success:boolean;freedKB:number;message:string}> {
+    try { return await storeRequest('/api/admin/cleanup',{method:'POST',body:'{}'}); }
+    catch(error){return {success:false,freedKB:0,message:error instanceof Error?error.message:'No se pudo completar la limpieza.'};}
   }
 }

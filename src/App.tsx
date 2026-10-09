@@ -1,7 +1,7 @@
 import { StripePaymentResult } from './components/StripePaymentResult';
 import React, { useState, useEffect } from 'react';
 import { MachineProduct, CartItem, ProductVariant } from './types';
-import { getStoredMachines, recordSiteVisit, recordHotspotClick } from './utils/adminStore';
+import { getStoredMachines, recordSiteVisit, recordHotspotClick, refreshPublicStore } from './utils/adminStore';
 import { getProductPrice } from './utils/formatters';
 import { AdminPanel } from './components/admin/AdminPanel';
 import { Navbar } from './components/Navbar';
@@ -28,8 +28,8 @@ export function App() {
   const [currency, setCurrency] = useState<'USD' | 'MXN'>('MXN');
   const [selectedMachine, setSelectedMachine] = useState<MachineProduct | null>(null);
   const [cart, setCart] = useState<CartItem[]>(() => {
-    if (new URLSearchParams(window.location.search).get('payment') !== 'cancel') return [];
-    try { const saved = JSON.parse(sessionStorage.getItem('mr_stripe_cart') || '[]'); return Array.isArray(saved) ? saved : []; }
+    const cancel = new URLSearchParams(window.location.search).get('payment') === 'cancel';
+    try { const saved = JSON.parse(sessionStorage.getItem(cancel ? 'mr_stripe_cart' : 'mr_cart') || '[]'); return Array.isArray(saved) ? saved : []; }
     catch { return []; }
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -41,6 +41,7 @@ export function App() {
   useEffect(() => {
     // Record site visit for admin metrics
     recordSiteVisit();
+    void refreshPublicStore().catch(() => { /* Bundled catalog remains usable offline; checkout revalidates prices. */ });
 
     const handleHash = () => {
       setIsAdmin(window.location.hash.toLowerCase().includes('#admin'));
@@ -58,6 +59,7 @@ export function App() {
       window.removeEventListener('mr_machines_updated', handleMachinesUpdate);
     };
   }, []);
+  useEffect(() => { sessionStorage.setItem('mr_cart', JSON.stringify(cart)); }, [cart]);
 
   if (isAdmin) {
     return (
@@ -81,7 +83,7 @@ export function App() {
       if (existing) {
         return prev.map((item) =>
           item.id === itemId
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: Math.min(20, item.quantity + 1) }
             : item
         );
       }
@@ -107,7 +109,7 @@ export function App() {
         .map((item) => {
           if (item.id === itemId) {
             const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
+            return newQty > 0 ? { ...item, quantity: Math.min(20, newQty) } : null;
           }
           return item;
         })
@@ -148,7 +150,7 @@ export function App() {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans selection:bg-[#2563eb] selection:text-white overflow-x-hidden w-full relative">
       
-      <StripePaymentResult />
+      <StripePaymentResult onPaid={() => setCart([])} />
       {/* 1. Header with Cart Badge & Appointment Button */}
       <Navbar
         cartCount={totalCartCount}
