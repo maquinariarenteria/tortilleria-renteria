@@ -56,24 +56,7 @@ export class AdminService {
       // Worker endpoint not available (e.g. running in standard vite dev without worker)
     }
 
-    // Local / Dev Fallback:
-    const validSuggestedPasswords = ['renteria2026', 'admin123', 'admin'];
-    if (validSuggestedPasswords.includes(password.trim())) {
-      const sessionToken = `session_token_${Date.now()}`;
-      setAdminAuthenticated(true, sessionToken);
-      return { 
-        success: true, 
-        token: sessionToken, 
-        source: 'local_fallback',
-        secretKeyName: CLOUDFLARE_CONFIG_INFO.secretName
-      };
-    }
-
-    return { 
-      success: false, 
-      error: `Clave incorrecta. Recuerda configurar el secreto "${CLOUDFLARE_CONFIG_INFO.secretName}" en Cloudflare o usar la clave provisional.`,
-      secretKeyName: CLOUDFLARE_CONFIG_INFO.secretName
-    };
+    return { success: false, error: 'No se pudo iniciar sesión. Verifica el servidor y ADMIN_PASSWORD.' };
   }
 
   /**

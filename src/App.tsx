@@ -1,3 +1,4 @@
+import { StripePaymentResult } from './components/StripePaymentResult';
 import React, { useState, useEffect } from 'react';
 import { MachineProduct, CartItem, ProductVariant } from './types';
 import { getStoredMachines, recordSiteVisit, recordHotspotClick } from './utils/adminStore';
@@ -26,7 +27,11 @@ export function App() {
   const [machines, setMachines] = useState<MachineProduct[]>(() => getStoredMachines());
   const [currency, setCurrency] = useState<'USD' | 'MXN'>('MXN');
   const [selectedMachine, setSelectedMachine] = useState<MachineProduct | null>(null);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    if (new URLSearchParams(window.location.search).get('payment') !== 'cancel') return [];
+    try { const saved = JSON.parse(sessionStorage.getItem('mr_stripe_cart') || '[]'); return Array.isArray(saved) ? saved : []; }
+    catch { return []; }
+  });
   const [isCartOpen, setIsCartOpen] = useState(false);
   
   // Appointment modal state
@@ -143,6 +148,7 @@ export function App() {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans selection:bg-[#2563eb] selection:text-white overflow-x-hidden w-full relative">
       
+      <StripePaymentResult />
       {/* 1. Header with Cart Badge & Appointment Button */}
       <Navbar
         cartCount={totalCartCount}

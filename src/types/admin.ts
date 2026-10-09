@@ -97,6 +97,11 @@ export interface AdminSaleOrder {
   iva: number;
   shippingCost: number;
   total: number;
+  currency?: 'MXN' | 'USD';
+  paymentType?: 'full';
+  amountPaid?: number;
+  balanceDue?: number;
+  stripeSessionId?: string;
   paymentMethod: 'Stripe' | 'Transferencia SPEI' | 'Efectivo en Taller' | 'Financiamiento';
   manufacturingStatus: 'Pendiente' | 'En Fabricación' | 'Probada en Banco' | 'Embarcada' | 'Entregada';
   trackingNumber?: string;

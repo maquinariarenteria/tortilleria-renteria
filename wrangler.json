@@ -6,7 +6,10 @@
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api/*"
+    ]
   },
   "build": {
     "command": "npm run build"
@@ -15,16 +18,11 @@
     {
       "binding": "DB",
       "database_name": "tortilleria-renteria-db",
-      "database_id": "auto"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "MEDIA_BUCKET",
-      "bucket_name": "r2-fotos-maquinaria"
+      "database_id": "ac44058f-141b-4dd0-8cfe-7e7df1aaf67d"
     }
   ],
   "vars": {
-    "ENVIRONMENT": "production"
+    "ENVIRONMENT": "production",
+    "SITE_URL": "https://tortilleria-renteria.malisil0817.workers.dev"
   }
 }

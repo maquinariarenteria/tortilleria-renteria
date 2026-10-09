@@ -6,7 +6,7 @@ import { getSiteConfig, recordHotspotClick, recordABConversion, recordABVisitor 
 import { AdminSaleOrder } from '../types/admin';
 import { 
   X, Trash2, Plus, Minus, MessageCircle, ShoppingBag, 
-  CreditCard, CheckCircle2, Truck, AlertTriangle, ArrowRight, ShieldCheck, Lock
+  CreditCard, Truck, AlertTriangle, ArrowRight, ShieldCheck, Lock
 } from 'lucide-react';
 
 interface QuoteCartDrawerProps {
@@ -49,14 +49,9 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [invalidField, setInvalidField] = useState<string>('');
   const [, setOrderConfirmedWhatsApp] = useState<AdminSaleOrder | null>(null);
-  const [stripePaymentConfirmed, setStripePaymentConfirmed] = useState<AdminSaleOrder | null>(null);
 
   // Stripe Online Payment Modal inside drawer
   const [showStripeModal, setShowStripeModal] = useState(false);
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCVC, setCardCVC] = useState('');
-
   // Lock body scroll when drawer is open
   useEffect(() => {
     if (isOpen) {
@@ -245,38 +240,31 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
   const handleConfirmStripePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
-    recordABConversion('B');
-
-    const saleOrder = buildSaleRecord('Stripe');
-
-    // Register in Admin store as paid online and dispatch email notification
-    await sendOrderNotificationEmail({ order: saleOrder, currency });
-
-    setTimeout(() => {
+    setErrorMessage('');
+    try {
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currency, paymentType: 'full', requiresInvoice: requiresFactura,
+          expectedTotal: Math.round(grandTotal * 100),
+          customer: { name: clientName, phone: clientPhone, email: clientEmail,
+            address: clientAddress, city: clientCity, zip: clientCP,
+            rfc: clientRFC, businessName: clientRazonSocial },
+          items: items.map(item => ({ machineId: item.machine.id,
+            variantId: item.selectedVariant?.id, quantity: item.quantity })),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.checkoutUrl) throw new Error(data.error || 'No se pudo abrir el pago seguro.');
+      const checkoutUrl = new URL(data.checkoutUrl);
+      if (checkoutUrl.protocol !== 'https:' || checkoutUrl.hostname !== 'checkout.stripe.com') throw new Error('Enlace de pago inválido.');
+      sessionStorage.setItem('mr_stripe_cart', JSON.stringify(items));
+      window.location.assign(checkoutUrl.href);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'No se pudo conectar con Stripe.');
       setIsProcessing(false);
-      setShowStripeModal(false);
-      setStripePaymentConfirmed(saleOrder);
-      onClearCart();
-    }, 1200);
-  };
-
-  // WhatsApp button for sending payment receipt after online payment
-  const handleSendStripeReceiptToWhatsApp = () => {
-    if (!stripePaymentConfirmed) return;
-    const itemsSummary = stripePaymentConfirmed.items.map(i => `• ${i.name} x${i.quantity}`).join('\n');
-    const msg = 
-      `*COMPROBANTE DE PAGO - MAQUINARIA RENTERIA*\n\n` +
-      `*Folio de Venta:* #${stripePaymentConfirmed.folio}\n` +
-      `*Cliente:* ${stripePaymentConfirmed.clientName}\n` +
-      `*Teléfono:* ${stripePaymentConfirmed.clientPhone}\n` +
-      `*Correo:* ${stripePaymentConfirmed.clientEmail}\n` +
-      `*Dirección de Entrega:* ${stripePaymentConfirmed.shippingAddress}, ${stripePaymentConfirmed.shippingCity}\n` +
-      `*Monto Pagado en Línea:* ${formatCurrency(stripePaymentConfirmed.total, currency)} (Tarjeta / Stripe)\n\n` +
-      `*Equipos Adquiridos:*\n${itemsSummary}\n\n` +
-      `Hola Maquinaria Rentería, adjunto mi comprobante de pago de la compra realizada con tarjeta en la web para acordar los temas del envío y tiempos de entrega.`;
-
-    const waPhone = config.phone1.replace(/\D/g, '') || '526391141084';
-    window.open(`https://wa.me/52${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
   };
 
   return (
@@ -312,74 +300,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
           {/* Body */}
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-5 space-y-4 overscroll-contain">
             
-            {/* SUCCESS STATE A: Online Stripe Payment Confirmed */}
-            {stripePaymentConfirmed ? (
-              <div className="py-8 text-center space-y-4">
-                <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200 shadow-sm">
-                  <CheckCircle2 size={36} />
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                    Pago Exitoso con Tarjeta (Stripe)
-                  </span>
-                  <h3 className="text-xl font-black text-slate-900 uppercase mt-2">
-                    ¡Gracias por tu compra!
-                  </h3>
-                  <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                    Tu pago con tarjeta ha sido procesado de forma segura y registrado en nuestro sistema de fabricación.
-                  </p>
-                </div>
-
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-left text-xs space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-medium">Folio Oficial:</span>
-                    <b className="font-mono text-[#2563eb]">#{stripePaymentConfirmed.folio}</b>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-medium">Monto Pagado:</span>
-                    <b className="font-mono text-emerald-700 text-sm">{formatCurrency(stripePaymentConfirmed.total, currency)}</b>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-medium">Cliente:</span>
-                    <span className="text-slate-800 font-bold">{stripePaymentConfirmed.clientName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-medium">Destino de Entrega:</span>
-                    <span className="text-slate-700">{stripePaymentConfirmed.shippingCity}</span>
-                  </div>
-                </div>
-
-                {/* Important instruction: send receipt via WhatsApp to agree on shipping */}
-                <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl text-xs text-amber-900 text-left space-y-1">
-                  <span className="font-bold flex items-center gap-1.5 text-amber-800">
-                    <Truck size={14} className="text-amber-700 shrink-0" />
-                    Paso siguiente obligatorio: Acordar el envío
-                  </span>
-                  <p className="text-[11px] leading-relaxed text-amber-800">
-                    Envía tu comprobante de pago directamente a nuestro WhatsApp oficial para que un asesor te asigne fecha de entrega y coordine la fletera hacia tu ciudad.
-                  </p>
-                </div>
-
-                <button
-                  onClick={handleSendStripeReceiptToWhatsApp}
-                  className="w-full py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition active:scale-95 cursor-pointer"
-                >
-                  <MessageCircle size={18} />
-                  <span>Enviar Comprobante por WhatsApp y Acordar Envío</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setStripePaymentConfirmed(null);
-                    onClose();
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider transition cursor-pointer"
-                >
-                  Cerrar
-                </button>
-              </div>
-            ) : items.length === 0 ? (
+            {items.length === 0 ? (
               <div className="py-20 text-center text-slate-400 space-y-2">
                 <ShoppingBag size={44} className="mx-auto text-slate-300" />
                 <p className="text-sm font-bold uppercase text-slate-600">Tu carrito está vacío</p>
@@ -647,7 +568,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
           </div>
 
           {/* Footer: Price summary & 2 Big Action Buttons */}
-          {items.length > 0 && !stripePaymentConfirmed && (
+          {items.length > 0 && (
             <div className="shrink-0 p-4 sm:p-5 border-t border-slate-200 bg-slate-50 space-y-3">
               
               {/* Financial Breakdown */}
@@ -787,51 +708,9 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
             </div>
 
             <form onSubmit={handleConfirmStripePayment} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-slate-700 font-bold uppercase text-[10px] mb-1">
-                  Número de Tarjeta (Crédito o Débito) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="4242 •••• •••• 4242"
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-lg font-mono focus:border-[#2563eb] focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-slate-700 font-bold uppercase text-[10px] mb-1">
-                    Vencimiento (MM/AA) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="12/28"
-                    value={cardExpiry}
-                    onChange={(e) => setCardExpiry(e.target.value)}
-                    className="w-full p-2.5 border border-slate-300 rounded-lg font-mono focus:border-[#2563eb] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-bold uppercase text-[10px] mb-1">
-                    CVC / CVV *
-                  </label>
-                  <input
-                    type="password"
-                    maxLength={4}
-                    required
-                    placeholder="•••"
-                    value={cardCVC}
-                    onChange={(e) => setCardCVC(e.target.value)}
-                    className="w-full p-2.5 border border-slate-300 rounded-lg font-mono focus:border-[#2563eb] focus:outline-none"
-                  />
-                </div>
-              </div>
-
+              <p className="font-bold">Pago completo del 100% · {formatCurrency(grandTotal, currency)}</p>
+              <p className="text-slate-600">Ingresarás los datos de tu tarjeta en la página segura de Stripe. El flete se acuerda por separado.</p>
+              {errorMessage && <p role="alert" className="text-red-700">{errorMessage}</p>}
               <div className="pt-2 space-y-2">
                 <button
                   type="submit"
@@ -839,17 +718,17 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                   className="w-full py-3.5 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   {isProcessing ? (
-                    <span>Procesando pago con Stripe...</span>
+                    <span>Abriendo Stripe...</span>
                   ) : (
                     <>
                       <ShieldCheck size={16} />
-                      <span>Confirmar Pago de {formatCurrency(grandTotal, currency)}</span>
+                      <span>Continuar a Stripe</span>
                     </>
                   )}
                 </button>
 
                 <p className="text-[10px] text-slate-400 text-center flex items-center justify-center gap-1">
-                  <span>Conexión cifrada SSL de 256 bits · Procesado por Stripe Inc.</span>
+                  <span>Pago procesado por Stripe</span>
                 </p>
               </div>
             </form>

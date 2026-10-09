@@ -1,3 +1,5 @@
+import { handleStripe } from './stripe';
+import { createAdminToken, verifyAdminToken } from './adminAuth';
 /**
  * Cloudflare Worker Backend for Maquinaria Renteria / Tortilleria Renteria
  * Handles:
@@ -14,6 +16,8 @@ export interface Env {
   ADMIN_JWT_SECRET?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_PUBLISHABLE_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  SITE_URL?: string;
   DB?: any; // Cloudflare D1 Database binding
   MEDIA_BUCKET?: any; // Cloudflare R2 Bucket binding
   ASSETS: {
@@ -44,11 +48,14 @@ export default {
         const providedPassword = (body.password || '').trim();
 
         // The secret configured in Cloudflare (or default fallback for initial setup)
-        const expectedSecret = (env.ADMIN_PASSWORD || 'renteria2026').trim();
+        if (!env.ADMIN_PASSWORD) {
+          return new Response(JSON.stringify({ error: 'Configure ADMIN_PASSWORD en Cloudflare.' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+        }
+        const expectedSecret = env.ADMIN_PASSWORD.trim();
 
         if (providedPassword === expectedSecret) {
           // Generate session token
-          const token = `cf_adm_${btoa(Date.now().toString())}_${crypto.randomUUID().slice(0, 8)}`;
+          const token = await createAdminToken(env.ADMIN_JWT_SECRET || env.ADMIN_PASSWORD);
           return new Response(
             JSON.stringify({
               success: true,
@@ -81,20 +88,20 @@ export default {
       }
     }
 
-    // 2. API: Admin Auth Verification
-    if (pathname === '/api/admin/verify' && request.method === 'GET') {
-      const authHeader = request.headers.get('Authorization') || '';
-      if (authHeader.startsWith('Bearer cf_adm_') || authHeader.startsWith('Bearer local_token_')) {
-        return new Response(
-          JSON.stringify({ valid: true, secretConfigured: !!env.ADMIN_PASSWORD }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+    if (pathname.startsWith('/api/admin/')) {
+      if (!await verifyAdminToken(request, env.ADMIN_JWT_SECRET || env.ADMIN_PASSWORD)) {
+        return new Response(JSON.stringify({ error: 'Inicia sesión nuevamente.' }), {
+          status: 401, headers: { 'Content-Type': 'application/json' },
+        });
       }
-      return new Response(
-        JSON.stringify({ valid: false }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-      );
+      if (pathname === '/api/admin/verify' && request.method === 'GET') {
+        return new Response(JSON.stringify({ valid: true, secretConfigured: !!env.ADMIN_PASSWORD }), {
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
     }
+    const stripeResponse = await handleStripe(request, env);
+    if (stripeResponse) return stripeResponse;
 
     // 3. API: Image Upload to Cloudflare R2
     if (pathname === '/api/admin/upload' && request.method === 'POST') {
@@ -156,61 +163,6 @@ export default {
         headers.set('Cache-Control', 'public, max-age=31536000, immutable');
 
         return new Response(object.body, { headers });
-      }
-    }
-
-    // 5. API: Stripe Checkout & Payment Session
-    if (pathname === '/api/stripe/create-checkout-session' && request.method === 'POST') {
-      try {
-        const body: any = await request.json();
-        const { amount, currency = 'mxn', customerName, customerEmail, folio } = body;
-
-        // If STRIPE_SECRET_KEY is configured in Cloudflare secrets
-        if (env.STRIPE_SECRET_KEY) {
-          // Stripe API call via standard fetch
-          const params = new URLSearchParams();
-          params.append('payment_method_types[]', 'card');
-          params.append('line_items[0][price_data][currency]', currency);
-          params.append('line_items[0][price_data][product_data][name]', `Pedido Maquinaria #${folio}`);
-          params.append('line_items[0][price_data][unit_amount]', Math.round(amount * 100).toString());
-          params.append('line_items[0][quantity]', '1');
-          params.append('mode', 'payment');
-          params.append('customer_email', customerEmail || 'cliente@maquinariarenteria.com');
-          params.append('success_url', `${url.origin}/?payment=success&folio=${folio}`);
-          params.append('cancel_url', `${url.origin}/?payment=cancel`);
-
-          const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`,
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: params.toString(),
-          });
-
-          const sessionData: any = await stripeRes.json();
-          if (sessionData.url) {
-            return new Response(
-              JSON.stringify({ success: true, checkoutUrl: sessionData.url, id: sessionData.id }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-        }
-
-        // Default instant confirmation session
-        return new Response(
-          JSON.stringify({
-            success: true,
-            checkoutUrl: null,
-            message: 'Stripe activado en modo directo para Maquinaria Rentería.',
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      } catch (err: any) {
-        return new Response(
-          JSON.stringify({ success: false, error: err.message }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        );
       }
     }
 
@@ -353,6 +305,13 @@ export default {
     }
 
     // 10. Default: Serve React Single Page Application via Cloudflare Static Assets
-    return env.ASSETS.fetch(request);
+    const asset = await env.ASSETS.fetch(request);
+    const response = new Response(asset.body, asset);
+    response.headers.set('Referrer-Policy', 'no-referrer');
+    if (response.headers.get('Content-Type')?.includes('text/html')) {
+      response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data: blob:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://api.web3forms.com https://*.stripe.com https://*.link.com; frame-src https://*.stripe.com https://*.link.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
+    }
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    return response;
   },
 };

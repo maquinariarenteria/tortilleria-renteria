@@ -1,10 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { AdminSaleOrder } from '../../../types/admin';
-import { getStoredSales, updateSaleStatus } from '../../../utils/adminStore';
+import { getStoredSales, updateSaleStatus, getAdminToken } from '../../../utils/adminStore';
+import { formatCurrency } from '../../../utils/formatters';
 import { FileText, Truck, CheckCircle2, Clock } from 'lucide-react';
 
 export const VentasTab: React.FC = () => {
   const [sales, setSales] = useState<AdminSaleOrder[]>(getStoredSales());
+  const [remoteSales, setRemoteSales] = useState<AdminSaleOrder[]>([]);
+  const [remoteError, setRemoteError] = useState('');
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/admin/stripe-orders', { headers: { Authorization: `Bearer ${getAdminToken() || ''}` }, signal: controller.signal })
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudieron consultar los pagos de Stripe.');
+        setRemoteSales(data.orders);
+      })
+      .catch(error => { if (error.name !== 'AbortError') setRemoteError(error.message); });
+    return () => controller.abort();
+  }, []);
+  const orders = [...remoteSales, ...sales.filter(sale => !remoteSales.some(remote => remote.folio === sale.folio))];
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -14,7 +29,19 @@ export const VentasTab: React.FC = () => {
     return () => window.removeEventListener('mr_sales_updated', handleUpdate);
   }, []);
 
-  const handleStatusChange = (folio: string, status: AdminSaleOrder['manufacturingStatus']) => {
+  const handleStatusChange = async (folio: string, status: AdminSaleOrder['manufacturingStatus']) => {
+    if (remoteSales.some(order => order.folio === folio)) {
+      try {
+        const response = await fetch(`/api/admin/stripe-orders/${encodeURIComponent(folio)}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAdminToken() || ''}` },
+          body: JSON.stringify({ status }),
+        });
+        if (!response.ok) throw new Error('No se pudo guardar el estado de fabricación.');
+        setRemoteSales(current => current.map(order => order.folio === folio ? { ...order, manufacturingStatus: status } : order));
+        setRemoteError('');
+      } catch (error) { setRemoteError(error instanceof Error ? error.message : 'No se pudo guardar.'); }
+      return;
+    }
     const updated = updateSaleStatus(folio, status);
     setSales(updated);
   };
@@ -27,7 +54,7 @@ export const VentasTab: React.FC = () => {
           <h2 className="text-xl font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
             <span>Órdenes y Ventas de Maquinaria</span>
             <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-              {sales.length} Pedidos
+              {orders.length} Pedidos
             </span>
           </h2>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
@@ -36,9 +63,10 @@ export const VentasTab: React.FC = () => {
         </div>
       </div>
 
+      {remoteError && <p role="alert" className="text-sm text-amber-700">{remoteError}</p>}
       {/* Orders List */}
       <div className="space-y-4">
-        {sales.length === 0 ? (
+        {orders.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-3">
             <FileText className="w-10 h-10 text-slate-300 mx-auto" />
             <h3 className="font-black text-slate-800 text-sm uppercase tracking-wide">Sin ventas registradas aún</h3>
@@ -47,7 +75,7 @@ export const VentasTab: React.FC = () => {
             </p>
           </div>
         ) : (
-          sales.map((order) => (
+          orders.map((order) => (
             <div
               key={order.folio}
               className="bg-white border border-slate-200 hover:border-blue-300 p-5 rounded-2xl shadow-sm transition-all space-y-4"
@@ -86,7 +114,7 @@ export const VentasTab: React.FC = () => {
                   {order.items.map((item, idx) => (
                     <div key={idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex justify-between font-medium">
                       <span className="text-slate-800">{item.name} x{item.quantity}</span>
-                      <span className="text-slate-900 font-mono font-bold">${item.total.toLocaleString()}</span>
+                      <span className="text-slate-900 font-mono font-bold">{formatCurrency(item.total, order.currency || 'MXN')}</span>
                     </div>
                   ))}
                 </div>
@@ -95,6 +123,11 @@ export const VentasTab: React.FC = () => {
                 <div className="space-y-1 text-slate-600 font-medium">
                   <span className="text-slate-500 block font-bold uppercase tracking-wider text-[10px]">Pago y Facturación:</span>
                   <p>Método: <b className="text-slate-900">{order.paymentMethod}</b></p>
+                  {order.stripeSessionId && <>
+                    <p className="text-emerald-700 font-bold">Pago completo confirmado</p>
+                    <p>Pagado: {formatCurrency(order.amountPaid || 0, order.currency || 'MXN')}</p>
+                    <p>Saldo: {formatCurrency(order.balanceDue || 0, order.currency || 'MXN')}</p>
+                  </>}
                   <p>Factura: {order.requiresInvoice ? <b className="text-emerald-700">CFDI Solicitado ({order.rfc})</b> : 'Nota de Venta'}</p>
                   <p>Flete: <span className="text-slate-900 font-medium">{order.shippingCost > 0 ? `$${order.shippingCost.toLocaleString()} MXN` : 'A acordar con el vendedor'}</span></p>
                   {order.trackingNumber && (
@@ -107,7 +140,7 @@ export const VentasTab: React.FC = () => {
                   <div className="text-left md:text-right">
                     <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Total Facturado</span>
                     <span className="text-xl font-black text-slate-900 font-mono">
-                      ${order.total.toLocaleString()} MXN
+                      {formatCurrency(order.total, order.currency || 'MXN')} {order.currency || 'MXN'}
                     </span>
                     <span className="text-[10px] text-slate-500 block font-medium">Flete a coordinar con fletera</span>
                   </div>
