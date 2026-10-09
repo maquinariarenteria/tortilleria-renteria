@@ -5,11 +5,11 @@ import {
 } from 'lucide-react';
 import { 
   getStoredQuotes, 
-  getStoredSales, 
   getStoredAppointments, 
   getStoredSettings 
 } from '../../../utils/adminStore';
-import { AdminTab, CustomerQuote, AdminSaleOrder, Appointment } from '../../../types/admin';
+import { AdminTab, CustomerQuote, Appointment } from '../../../types/admin';
+import { useAdminSales } from '../../../hooks/useAdminSales';
 
 interface ResumenTabProps {
   onNavigateTab: (tab: AdminTab) => void;
@@ -17,14 +17,13 @@ interface ResumenTabProps {
 
 export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
   const [quotes, setQuotes] = useState<CustomerQuote[]>(getStoredQuotes());
-  const [sales, setSales] = useState<AdminSaleOrder[]>(getStoredSales());
+  const { orders: sales, remoteError, loading } = useAdminSales();
   const [appointments, setAppointments] = useState<Appointment[]>(getStoredAppointments());
   const [settings, setSettings] = useState(getStoredSettings());
 
   useEffect(() => {
     const handleUpdate = () => {
       setQuotes(getStoredQuotes());
-      setSales(getStoredSales());
       setAppointments(getStoredAppointments());
       setSettings(getStoredSettings());
     };
@@ -42,7 +41,8 @@ export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
     };
   }, []);
 
-  const totalSalesAmount = sales.reduce((acc, s) => acc + s.total, 0);
+  const totalSalesAmount = sales.filter(s => s.currency !== 'USD').reduce((acc, s) => acc + s.total, 0);
+  const usdSalesAmount = sales.filter(s => s.currency === 'USD').reduce((acc, s) => acc + s.total, 0);
   const target = settings.monthlySalesTarget || 250000;
   const progressPercent = Math.min(100, Math.round((totalSalesAmount / target) * 100));
 
@@ -106,8 +106,11 @@ export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
             </div>
           </div>
           <div className="text-2xl font-black text-slate-900 tracking-tight mb-2 font-mono">
-            ${totalSalesAmount.toLocaleString()} <span className="text-xs font-bold text-slate-400">MXN</span>
+            {loading ? 'Consultando…' : <>${totalSalesAmount.toLocaleString()} <span className="text-xs font-bold text-slate-400">MXN</span></>}
           </div>
+          {usdSalesAmount > 0 && <p className="text-xs font-bold text-slate-600 mb-2">${usdSalesAmount.toLocaleString()} USD</p>}
+          {!loading && <p className="text-xs text-slate-500 mb-2">{sales.length} pedidos registrados</p>}
+          {remoteError && <p role="alert" className="text-xs text-amber-700 mb-2">{remoteError}</p>}
           <div className="space-y-1.5">
             <div className="flex justify-between text-[11px] text-slate-600 font-semibold">
               <span>Meta mensual: ${target.toLocaleString()} MXN</span>

@@ -1,33 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { AdminSaleOrder } from '../../../types/admin';
-import { getStoredSales, updateSaleStatus, getAdminToken } from '../../../utils/adminStore';
+import { updateSaleStatus, getAdminToken } from '../../../utils/adminStore';
+import { useAdminSales } from '../../../hooks/useAdminSales';
 import { formatCurrency } from '../../../utils/formatters';
 import { FileText, Truck, CheckCircle2, Clock } from 'lucide-react';
 
 export const VentasTab: React.FC = () => {
-  const [sales, setSales] = useState<AdminSaleOrder[]>(getStoredSales());
-  const [remoteSales, setRemoteSales] = useState<AdminSaleOrder[]>([]);
-  const [remoteError, setRemoteError] = useState('');
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch('/api/admin/stripe-orders', { headers: { Authorization: `Bearer ${getAdminToken() || ''}` }, signal: controller.signal })
-      .then(async response => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'No se pudieron consultar los pagos de Stripe.');
-        setRemoteSales(data.orders);
-      })
-      .catch(error => { if (error.name !== 'AbortError') setRemoteError(error.message); });
-    return () => controller.abort();
-  }, []);
-  const orders = [...remoteSales, ...sales.filter(sale => !remoteSales.some(remote => remote.folio === sale.folio))];
-
-  useEffect(() => {
-    const handleUpdate = () => {
-      setSales(getStoredSales());
-    };
-    window.addEventListener('mr_sales_updated', handleUpdate);
-    return () => window.removeEventListener('mr_sales_updated', handleUpdate);
-  }, []);
+  const { orders, setSales, remoteSales, setRemoteSales, remoteError, setRemoteError, loading } = useAdminSales();
 
   const handleStatusChange = async (folio: string, status: AdminSaleOrder['manufacturingStatus']) => {
     if (remoteSales.some(order => order.folio === folio)) {
@@ -66,7 +45,7 @@ export const VentasTab: React.FC = () => {
       {remoteError && <p role="alert" className="text-sm text-amber-700">{remoteError}</p>}
       {/* Orders List */}
       <div className="space-y-4">
-        {orders.length === 0 ? (
+        {loading && orders.length === 0 ? <p className="text-sm text-slate-500">Consultando pagos de Stripe…</p> : orders.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-3">
             <FileText className="w-10 h-10 text-slate-300 mx-auto" />
             <h3 className="font-black text-slate-800 text-sm uppercase tracking-wide">Sin ventas registradas aún</h3>
