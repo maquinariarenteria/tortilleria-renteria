@@ -179,6 +179,14 @@ for(const m of MACHINES_DATA)for(const v of [undefined,...(m.variants||[])])for(
 }
 
 // Browser storage and service failure simulation, no transmission to email recipients.
+{
+ const env=setup(); const token=await login(env);
+ const headers={Authorization:'Bearer '+token};
+ const large=await worker.fetch(req('/api/admin/stripe-orders/fixture',{body:{status:'Pendiente',padding:'x'.repeat(2100)},headers}),env);
+ record('ORDER-STATUS-SIZE',9,'Estado de fabricación limita el cuerpo autenticado',large.status===413,{status:large.status});
+ const type=await worker.fetch(req('/api/admin/stripe-orders/fixture',{body:{status:'Pendiente'},headers:{...headers,'Content-Type':'text/plain'}}),env);
+ record('ORDER-STATUS-TYPE',9,'Estado de fabricación rechaza contenido ajeno a JSON',type.status===415,{status:type.status});
+}
 class Storage{m=new Map();getItem(k){return this.m.get(k)||null}setItem(k,v){this.m.set(k,String(v))}removeItem(k){this.m.delete(k)}}
 globalThis.window={localStorage:new Storage(),dispatchEvent(){}};globalThis.localStorage=window.localStorage;globalThis.sessionStorage=new Storage();
 const store=await import(new URL('store.mjs',cache));

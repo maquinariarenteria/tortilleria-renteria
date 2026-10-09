@@ -154,7 +154,7 @@ export async function handleStripe(request: Request, env: Env): Promise<Response
     }
     if (url.pathname.startsWith('/api/admin/stripe-orders/') && request.method === 'POST') {
       const folio = decodeURIComponent(url.pathname.split('/').pop() || '');
-      const body: any = await request.json();
+      const body: any = await readJson(request, 2000);
       const allowed = ['Pendiente', 'En Fabricación', 'Probada en Banco', 'Embarcada', 'Entregada'];
       if (!allowed.includes(body.status)) return json({ error: 'Estado inválido.' }, 400);
       const row = await env.DB.prepare('SELECT * FROM stripe_orders WHERE id = ?').bind(folio).first();
