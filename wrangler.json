@@ -23,6 +23,6 @@
   ],
   "vars": {
     "ENVIRONMENT": "production",
-    "SITE_URL": "https://tortilleria-renteria.malisil0817.workers.dev"
+    "SITE_URL": "https://maquinaria-renteria.com"
   }
 }
