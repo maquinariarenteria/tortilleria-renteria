@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { RefreshCw, ExternalLink, Database, X, CheckCircle2, ChevronDown } from 'lucide-react';
 
 interface AdminHeaderProps {
-  onRefresh: () => void;
+  onRefresh: () => Promise<boolean>;
   onExit: () => void;
   isRefreshing?: boolean;
 }
@@ -11,8 +11,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onRefresh, onExit, isR
   const [showOptions, setShowOptions] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
-  const handleRefreshClick = () => {
-    onRefresh();
+  const handleRefreshClick = async () => {
+    setShowSuccessToast(false);
+    if (!await onRefresh()) return;
     setShowSuccessToast(true);
     setTimeout(() => setShowSuccessToast(false), 2000);
   };
@@ -54,12 +55,13 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onRefresh, onExit, isR
         {/* Status Pill: En línea */}
         <div className="hidden sm:flex items-center gap-1.5 bg-[#1e293b] text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span className="text-[11px] font-bold tracking-tight text-slate-300">En línea</span>
+          <span className="text-[11px] font-bold tracking-tight text-slate-300">Sesión verificada</span>
         </div>
 
         {/* Actualizar Button */}
         <button
           onClick={handleRefreshClick}
+          disabled={isRefreshing}
           className="flex items-center gap-1.5 bg-[#1e293b] hover:bg-[#334155] active:scale-95 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg transition-all font-semibold cursor-pointer"
           title="Recargar datos de Cloudflare / almacenamiento local"
         >
@@ -100,7 +102,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onRefresh, onExit, isR
               <button
                 onClick={() => {
                   setShowOptions(false);
-                  alert('Base de Datos D1: tortilleria-renteria-db (Cotizaciones, ventas, citas)\nAlmacenamiento R2: tortilleria-renteria-media (Fotos y manuales en alta resolución)');
+                  alert('D1 conserva cotizaciones, citas y pagos verificados. Consulta la pestaña Salud Web para comprobar la conexión y la disponibilidad de R2.');
                 }}
                 className="w-full text-left px-4 py-2.5 hover:bg-[#334155] flex items-center justify-between text-xs transition-colors"
               >

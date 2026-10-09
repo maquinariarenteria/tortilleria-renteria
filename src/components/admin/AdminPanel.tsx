@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AdminTab } from '../../types/admin';
-import { setAdminAuthenticated, getStoredQuotes, refreshAdminStore } from '../../utils/adminStore';
+import { setAdminAuthenticated, getStoredQuotes, refreshAdminStore, refreshPublicStore } from '../../utils/adminStore';
 import { storeRequest } from '../../services/storeApi';
 import { AdminHeader } from './AdminHeader';
 import { AdminNavbar } from './AdminNavbar';
@@ -28,6 +28,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [syncError, setSyncError] = useState('');
+  const [paymentMode, setPaymentMode] = useState('');
   const [activeTab, setActiveTab] = useState<AdminTab>('ajustes'); // default to 'ajustes' as in user's screenshot
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [pendingQuotesCount, setPendingQuotesCount] = useState<number>(() => {
@@ -61,22 +62,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
   useEffect(() => {
     if (!isAuthenticated) return;
     const sync = () => { if (document.visibilityState === 'visible') void refreshAdminStore().then(() => setSyncError('')).catch(e => { setSyncError(e.message); if (e.status === 401) { setAdminAuthenticated(false); setIsAuthenticated(false); } }); };
+    void storeRequest('/api/admin/health').then(data => setPaymentMode(data.stripeMode)).catch(() => {});
     sync(); const timer = window.setInterval(sync, 30000);
     window.addEventListener('focus', sync);
     return () => { window.clearInterval(timer); window.removeEventListener('focus', sync); };
   }, [isAuthenticated]);
 
-  const handleRefresh = () => {
-    void refreshAdminStore().catch(e => setSyncError(e.message));
+  const handleRefresh = async (): Promise<boolean> => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      window.dispatchEvent(new Event('mr_config_updated'));
-      window.dispatchEvent(new Event('mr_machines_updated'));
-      window.dispatchEvent(new Event('mr_quotes_updated'));
-      window.dispatchEvent(new Event('mr_sales_updated'));
-      window.dispatchEvent(new Event('mr_settings_updated'));
-    }, 600);
+    try {
+      await Promise.all([refreshAdminStore(), refreshPublicStore()]);
+      setSyncError('');
+      return true;
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : 'No se pudieron actualizar los datos.');
+      if ((error as { status?: number }).status === 401) { setAdminAuthenticated(false); setIsAuthenticated(false); }
+      return false;
+    } finally { setIsRefreshing(false); }
   };
 
   const handleLogout = async () => {
@@ -114,6 +116,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onExit }) => {
 
       {/* 3. Main Body: Active Tab Content */}
       <main className="flex-1 overflow-y-auto">
+        {paymentMode === 'test' && <p className="p-4 bg-amber-50 text-amber-900" role="status">Stripe está en modo de prueba. Las ventas mostradas son simulaciones y no representan cobros reales.</p>}
         {syncError && <p role="alert" className="p-4 text-red-700">{syncError}</p>}
         {activeTab === 'resumen' && <ResumenTab onNavigateTab={(t) => setActiveTab(t)} />}
         {activeTab === 'cotizaciones' && <CotizacionesTab />}

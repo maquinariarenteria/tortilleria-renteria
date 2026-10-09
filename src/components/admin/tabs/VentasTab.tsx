@@ -37,7 +37,7 @@ export const VentasTab: React.FC = () => {
             </span>
           </h2>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Seguimiento de ciclo de fabricación en planta (Delicias, Chih.), facturación con CFDI y guías de transporte.
+            Seguimiento de fabricación y pago. El CFDI y la guía de transporte se coordinan con el vendedor.
           </p>
         </div>
       </div>
@@ -50,7 +50,7 @@ export const VentasTab: React.FC = () => {
             <FileText className="w-10 h-10 text-slate-300 mx-auto" />
             <h3 className="font-black text-slate-800 text-sm uppercase tracking-wide">Sin ventas registradas aún</h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Cuando tus clientes finalicen un pedido desde el carrito por WhatsApp o paguen en línea con tarjeta vía Stripe, aparecerán aquí automáticamente para su control de fabricación y flete.
+              Los pagos confirmados por Stripe aparecerán aquí. Las solicitudes de WhatsApp se consultan en Cotizaciones.
             </p>
           </div>
         ) : (
@@ -117,7 +117,7 @@ export const VentasTab: React.FC = () => {
                 {/* Total & Actions */}
                 <div className="flex flex-col justify-between items-start md:items-end space-y-2">
                   <div className="text-left md:text-right">
-                    <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Total Facturado</span>
+                    <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Total del pedido</span>
                     <span className="text-xl font-black text-slate-900 font-mono">
                       {formatCurrency(order.total, order.currency || 'MXN')} {order.currency || 'MXN'}
                     </span>
@@ -125,11 +125,12 @@ export const VentasTab: React.FC = () => {
                   </div>
 
                   <button
-                    onClick={() => alert(`Generando nota de venta / cotización formal en PDF para ${order.folio}...`)}
+                    disabled
+                    title="La emisión de notas PDF y CFDI todavía no está configurada."
                     className="bg-slate-900 hover:bg-black text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                   >
                     <FileText className="w-3.5 h-3.5 text-[#60a5fa]" />
-                    <span>Nota de Venta PDF</span>
+                    <span>Nota PDF pendiente de configurar</span>
                   </button>
                 </div>
 

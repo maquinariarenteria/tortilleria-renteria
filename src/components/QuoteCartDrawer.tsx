@@ -80,6 +80,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
   const grandTotal = subtotal + ivaAmount;
 
   const modalRef = useModalFocus(isOpen, onClose);
+  const paymentModalRef = useModalFocus(isOpen && showStripeModal, () => setShowStripeModal(false));
   if (!isOpen) return null;
 
   const focusAndAlert = (fieldId: string, fieldName: string, message: string) => {
@@ -406,7 +407,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                   </span>
 
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
+                    <label htmlFor="cart-input-name" className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
                       Nombre Completo <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -429,7 +430,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
+                      <label htmlFor="cart-input-phone" className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
                         WhatsApp / Teléfono (10 dígitos) <span className="text-rose-500">*</span>
                       </label>
                       <input
@@ -681,7 +682,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
 
       {/* STRIPE PAYMENT MODAL */}
       {showStripeModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
+        <div ref={paymentModalRef} role="dialog" aria-modal="true" aria-label="Confirmar pago con tarjeta" className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4 text-slate-900 animate-scaleUp">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">

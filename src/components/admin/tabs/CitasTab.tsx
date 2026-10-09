@@ -67,7 +67,7 @@ export const CitasTab: React.FC = () => {
 
   const handleDeleteAppointment = async (id: string, name: string) => {
     try {
-    if (window.confirm(`¿Deseas eliminar la cita de "${name}" de Cloudflare para liberar espacio?`)) {
+    if (window.confirm(`¿Deseas archivar la cita de "${name}"? Se ocultará del panel y se conservará en D1 para recuperación.`)) {
       const updated = await deleteStoredAppointment(id);
       setAppointments(updated);
     }
@@ -82,7 +82,7 @@ export const CitasTab: React.FC = () => {
           <h2 className="text-xl font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
             <span>Agenda de Citas y Demostraciones</span>
             <span className="text-xs bg-blue-50 text-[#2563eb] font-bold px-2.5 py-0.5 rounded-full border border-blue-200">
-              {appointments.filter(a => a.status === 'Confirmada').length} Activas
+              {appointments.filter(a => a.status === 'Pendiente' || a.status === 'Confirmada').length} Activas
             </span>
           </h2>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
@@ -163,14 +163,11 @@ export const CitasTab: React.FC = () => {
                 {apt.scheduledDate}
               </span>
               <div className="flex items-center gap-1.5">
-                {apt.status !== 'Realizada' && (
-                  <button
-                    onClick={() => handleToggleStatus(apt.id, 'Realizada')}
-                    className="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold uppercase tracking-wider px-2 py-1 rounded-lg cursor-pointer transition-colors"
-                  >
-                    Realizada
-                  </button>
-                )}
+                <select aria-label={`Estado de la cita de ${apt.customerName}`} value={apt.status}
+                  onChange={e => void handleToggleStatus(apt.id, e.target.value as Appointment['status'])}
+                  className="text-[11px] bg-slate-50 border border-slate-300 rounded-lg px-2 py-1">
+                  <option>Pendiente</option><option>Confirmada</option><option>Realizada</option><option>Cancelada</option>
+                </select>
                 <a
                   href={`https://wa.me/52${apt.phone.replace(/\D/g, '')}?text=Hola%20${encodeURIComponent(apt.customerName)},%20te%20recordamos%20tu%20cita%20de%20demostraci%C3%B3n%20el%20d%C3%ADa%20${apt.scheduledDate}%20a%20las%20${apt.scheduledTime}%20en%20Maquinaria%20Renteria.`}
                   target="_blank"
@@ -183,7 +180,7 @@ export const CitasTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleDeleteAppointment(apt.id, apt.customerName)}
-                  title="Eliminar de Cloudflare para liberar espacio"
+                  title="Archivar cita (recuperable)"
                   className="p-1 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
