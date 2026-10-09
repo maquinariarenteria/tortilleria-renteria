@@ -64,7 +64,7 @@ const DEFAULT_CONFIG: SiteConfig = {
   phone1: '639 114 1084',
   phone2: '639 111 9008',
   email: 'maquinariarenteria17@gmail.com',
-  address: 'Av. Fernando Baeza #1402, Delicias, Chihuahua, México',
+  address: 'Calle 38 Sur #1410, colonia Linda Vista, Delicias, Chihuahua, México',
   facebookUrl: 'https://www.facebook.com/share/19Zrjb7iP2/?mibextid=wwXIfr',
   tiktokUrl: 'https://www.tiktok.com/@maquinaria.renteria?_r=1&_t=ZS-99a303xcAsv',
   stripePaymentLink: 'https://buy.stripe.com/maquinariarenteria',
@@ -206,7 +206,13 @@ export const INITIAL_SETTINGS_EXACT: AdminSettingsConfig = {
 export function getSiteConfig(): SiteConfig {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.CONFIG);
-    if (saved) return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+    if (saved) {
+      const config = { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+      if (config.address === 'Av. Fernando Baeza #1402, Delicias, Chihuahua, México') {
+        config.address = DEFAULT_CONFIG.address;
+      }
+      return config;
+    }
   } catch (e) {
     console.error('Error loading config:', e);
   }

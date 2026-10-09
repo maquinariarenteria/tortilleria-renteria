@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Appointment } from '../../../types/admin';
-import { getStoredAppointments, saveStoredAppointments, deleteStoredAppointment } from '../../../utils/adminStore';
+import { getStoredAppointments, saveStoredAppointments, deleteStoredAppointment, getSiteConfig } from '../../../utils/adminStore';
 import { Calendar, Clock, MapPin, Video, Phone, CheckCircle2, Plus, X, User, Trash2 } from 'lucide-react';
 
 export const CitasTab: React.FC = () => {
@@ -80,7 +80,7 @@ export const CitasTab: React.FC = () => {
             </span>
           </h2>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Programa pruebas en taller físico (Av. Fernando Baeza #1402, Delicias, Chih.) o videollamadas técnicas.
+            Programa pruebas en taller físico ({getSiteConfig().address}) o videollamadas técnicas.
           </p>
         </div>
 

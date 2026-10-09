@@ -120,7 +120,7 @@ export const ContactSection: React.FC = () => {
                     <MapPin size={16} className="text-[#2563eb] shrink-0 mt-0.5" />
                     <div>
                       <span className="font-bold text-slate-900">Ubicación de Planta: </span>
-                      <span>Av. Fernando Baeza #1402, Delicias, Chihuahua, México.</span>
+                      <span>{config.address}</span>
                     </div>
                   </div>
 
