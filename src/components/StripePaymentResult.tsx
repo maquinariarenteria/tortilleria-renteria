@@ -12,6 +12,16 @@ export function StripePaymentResult() {
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [visible, setVisible] = useState(!!reference.payment);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+  const copyFolio = async () => {
+    if (!result) return;
+    try {
+      await navigator.clipboard.writeText(result.folio);
+      setCopyStatus('copied');
+    } catch {
+      setCopyStatus('error');
+    }
+  };
   useEffect(() => {
     if (!reference.payment) return;
     // Remove the private return token before the customer visits other links.
@@ -48,7 +58,13 @@ export function StripePaymentResult() {
         {error && <p role="alert" className="text-red-700">{error}</p>}
         {!result && !error && <p role="status">Estamos consultando el estado de tu pago…</p>}
         {result && <div className="space-y-2 text-sm">
-          <p className="break-all">Folio: <strong>{result.folio}</strong></p>
+          <p className="break-all">Folio: <strong className="select-all">{result.folio}</strong></p>
+          <button type="button" onClick={copyFolio} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+            {copyStatus === 'copied' ? 'Código copiado' : 'Copiar código'}
+          </button>
+          <p role="status" aria-live="polite" className={copyStatus === 'error' ? 'text-red-700' : 'text-green-700'}>
+            {copyStatus === 'copied' ? 'Folio copiado al portapapeles.' : copyStatus === 'error' ? 'No se pudo copiar automáticamente. Selecciona el folio para copiarlo.' : ''}
+          </p>
           {paid ? <><p>Pagado: <strong>{formatCurrency(result.amountPaid, result.currency)} {result.currency}</strong></p>
             <p>Contacta al asesor con este folio para acordar el flete y la entrega.</p></>
             : <p>Estado: {result.status === 'failed' ? 'Pago fallido' : result.status === 'expired' ? 'Sesión expirada' : 'Pendiente de confirmación'}. El pedido se registra como pagado únicamente al verificarlo con Stripe.</p>}
