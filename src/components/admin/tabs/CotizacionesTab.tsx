@@ -47,7 +47,7 @@ export const CotizacionesTab: React.FC = () => {
 
   const handleDeleteQuote = async (id: string, folio: string) => {
     try {
-    if (window.confirm(`¿Deseas eliminar la cotización ${folio} de Cloudflare para liberar espacio?`)) {
+    if (window.confirm(`¿Deseas archivar la cotización ${folio}? Se ocultará del panel y se conservará en D1 para recuperación.`)) {
       const updated = await deleteStoredQuote(id);
       setQuotes(updated);
       if (selectedQuote?.id === id) {
@@ -192,7 +192,7 @@ export const CotizacionesTab: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleDeleteQuote(quote.id, quote.folio)}
-                    title="Eliminar de Cloudflare para liberar espacio"
+                    title="Archivar cotización (recuperable)"
                     className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -263,7 +263,7 @@ export const CotizacionesTab: React.FC = () => {
                   className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5 cursor-pointer border border-rose-200 transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>Eliminar de Cloudflare</span>
+                  <span>Archivar cotización</span>
                 </button>
 
                 <div className="flex items-center gap-2">
