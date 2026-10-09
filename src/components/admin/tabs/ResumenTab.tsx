@@ -43,8 +43,6 @@ export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
 
   const totalSalesAmount = sales.filter(s => s.currency !== 'USD').reduce((acc, s) => acc + s.total, 0);
   const usdSalesAmount = sales.filter(s => s.currency === 'USD').reduce((acc, s) => acc + s.total, 0);
-  const target = settings.monthlySalesTarget || 250000;
-  const progressPercent = Math.min(100, Math.round((totalSalesAmount / target) * 100));
 
   const pendingQuotes = quotes.filter(q => q.status === 'Nueva' || q.status === 'En Negociación');
   const upcomingAppointments = appointments.filter(a => a.status === 'Confirmada');
@@ -68,7 +66,7 @@ export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
                 MAQUINARIA <span className="text-[#2563eb]">RENTERIA</span>
               </h2>
               <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                PLANTA EN VIVO
+                FABRICACIÓN SOBRE PEDIDO
               </span>
             </div>
             <p className="text-xs text-slate-500 font-semibold mt-0.5">
@@ -111,18 +109,7 @@ export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
           {usdSalesAmount > 0 && <p className="text-xs font-bold text-slate-600 mb-2">${usdSalesAmount.toLocaleString()} USD</p>}
           {!loading && <p className="text-xs text-slate-500 mb-2">{sales.length} pedidos registrados</p>}
           {remoteError && <p role="alert" className="text-xs text-amber-700 mb-2">{remoteError}</p>}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-[11px] text-slate-600 font-semibold">
-              <span>Meta mensual: ${target.toLocaleString()} MXN</span>
-              <span className="text-[#2563eb] font-bold">{progressPercent}%</span>
-            </div>
-            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-              <div 
-                className="bg-[#2563eb] h-full rounded-full transition-all duration-1000"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
+          <p className="text-[11px] text-slate-500">Hasta 200 pedidos confirmados, con importes separados por moneda.</p>
         </div>
 
         {/* KPI 2: Cotizaciones Activas */}
@@ -164,18 +151,16 @@ export const ResumenTab: React.FC<ResumenTabProps> = ({ onNavigateTab }) => {
         {/* KPI 4: Tráfico Real */}
         <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Visitas Registradas</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Actividad de este navegador</span>
             <div className="p-2 rounded-xl bg-blue-50 text-[#2563eb]">
               <Users className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-black text-slate-900 tracking-tight mb-1 font-mono">
-            {settings.visitRecordsCount} <span className="text-xs font-semibold text-slate-500">visitas</span>
+            {settings.visitRecordsCount} <span className="text-xs font-semibold text-slate-500">sesiones locales</span>
           </div>
           <p className="text-[11px] text-slate-600 font-medium">
-            Tasa de conversión web: <b className="text-slate-900">
-              {settings.visitRecordsCount > 0 ? ((quotes.length / settings.visitRecordsCount) * 100).toFixed(1) : 0}%
-            </b>
+            Contador guardado en este navegador. La analítica global de visitas y conversiones no está configurada.
           </p>
         </div>
 
