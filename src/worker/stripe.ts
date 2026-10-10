@@ -110,6 +110,11 @@ export async function handleStripe(request: Request, env: Env): Promise<Response
       const origin = new URL(env.SITE_URL).origin;
       const session = await client(env).checkout.sessions.create({
         mode: 'payment', integration_identifier: 'renteria_checkout_qmrtvazp', customer_email: order.clientEmail, client_reference_id: order.folio,
+        payment_intent_data: {
+          receipt_email: order.clientEmail,
+          description: `Maquinaria Rentería · ${order.folio}`,
+          metadata: { order_id: order.folio },
+        },
         line_items: [{ quantity: 1, price_data: { currency: currency.toLowerCase(), unit_amount: amount,
           product_data: { name: 'Pago completo · Maquinaria Rentería', description: order.items.map(i => `${i.name} x${i.quantity}`).join(', ').slice(0, 1000) } } }],
         metadata: { order_id: order.folio, payment_type: paymentType },

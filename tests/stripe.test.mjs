@@ -77,6 +77,26 @@ test('D1 price override rejects stale browser total', async () => {
   const { env, DB } = setup(); DB.sqlite.prepare("INSERT INTO app_records(kind,id,data_json,updated_at) VALUES('catalog','main',?,?)").run(JSON.stringify(MACHINES_DATA.map(m=>m.id===product.id?{...m,priceMXN:m.priceMXN+1000}:m)),new Date().toISOString());
   assert.equal((await worker.fetch(request('/api/stripe/create-checkout-session', payload()), env)).status, 400);
 });
+test('Receipt targets the validated customer email; invalid emails never create Checkout', async () => withStripe(async ({ calls }) => {
+  const { env } = setup();
+  for (const email of [undefined, '', 'cliente@', 'cliente@example.com\r\nBcc: otro@example.com']) {
+    const response = await worker.fetch(request('/api/stripe/create-checkout-session', payload({ customer: { ...customer, email } })), env);
+    assert.equal(response.status, 400);
+  }
+  assert.equal(calls.length, 0);
+  const attempt = payload({ customer: { ...customer, email: '  cliente@example.com  ' } });
+  const response = await worker.fetch(request('/api/stripe/create-checkout-session', attempt), env);
+  assert.equal(response.status, 200);
+  const params = calls[0];
+  assert.equal(params.get('customer_email'), 'cliente@example.com');
+  assert.equal(params.get('payment_intent_data[receipt_email]'), 'cliente@example.com');
+  assert.equal(params.get('payment_intent_data[metadata][order_id]'), params.get('client_reference_id'));
+  assert.ok(params.get('payment_intent_data[description]').includes(params.get('client_reference_id')));
+  assert.equal(params.has('invoice_creation[enabled]'), false);
+  const retry = await worker.fetch(request('/api/stripe/create-checkout-session', attempt), env);
+  assert.equal(retry.status, 200);
+  assert.equal(calls.length, 1);
+}));
 test('Webhook signature, delayed payments, duplicates, amount mismatch and status access', async () => withStripe(async ({ sessions }) => {
   const { env, DB } = setup();
   const checkout = await (await worker.fetch(request('/api/stripe/create-checkout-session', payload()), env)).json();

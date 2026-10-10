@@ -124,7 +124,7 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
       focusAndAlert('cart-input-phone', 'phone', 'Por favor ingresa un Teléfono o WhatsApp de 10 dígitos para coordinar tu entrega.');
       return false;
     }
-    if (!clientEmail.trim() || !clientEmail.includes('@')) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail.trim())) {
       focusAndAlert('cart-input-email', 'email', 'Por favor ingresa un Correo Electrónico válido para enviarte el comprobante de pago con tarjeta.');
       return false;
     }
@@ -453,11 +453,14 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
 
                     <div>
                       <label htmlFor="cart-input-email" className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
-                        Correo Electrónico (para comprobante)
+                        Correo para confirmar tu compra
                       </label>
                       <input
                         id="cart-input-email"
                         type="email"
+                        autoComplete="email"
+                        maxLength={254}
+                        aria-describedby="cart-email-help"
                         placeholder="ejemplo@correo.com"
                         value={clientEmail}
                         onChange={(e) => {
@@ -470,6 +473,9 @@ export const QuoteCartDrawer: React.FC<QuoteCartDrawerProps> = ({
                             : 'border-slate-300 focus:border-[#2563eb]'
                         }`}
                       />
+                      <p id="cart-email-help" className="mt-1 text-[10px] text-slate-600">
+                        Obligatorio para pagar con tarjeta. Se usará para tu comprobante de Stripe.
+                      </p>
                     </div>
                   </div>
 

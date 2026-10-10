@@ -56,6 +56,17 @@ Antes de activar producción probar: compra completa al 100%, rechazo de anticip
 - Reembolsos, disputas y sincronización de métricas/CRM locales quedan fuera de esta integración inicial.
 - La clave y el webhook de producción serán distintos; no cambiar a producción hasta completar las pruebas.
 
+## Correos de compra
+
+- El carrito exige un correo válido para pagar con tarjeta; el servidor lo vuelve a validar antes de crear Checkout.
+- El Worker pasa ese correo como `customer_email` y `payment_intent_data.receipt_email`. En compras reales, Stripe envía el recibo al confirmarse el pago, incluso si la opción general de recibos no está activada. La descripción y metadata del pago incluyen el folio del pedido.
+- El aviso al vendedor depende de Stripe: Configuración → Preferencias de comunicación → Transacciones y saldos → «Recibo de pago exitoso - Email». Se envía al correo del usuario de Stripe, no necesariamente al correo de contacto publicado en la tienda. Las preferencias corresponden a cada cuenta y entorno.
+- Para activar también los recibos generales: Configuración → Empresa → Correos electrónicos de clientes → Pagos efectuados correctamente. Revisar esta opción y el aviso al vendedor en la cuenta real antes del lanzamiento.
+- Stripe no envía automáticamente los recibos de compras de prueba por defecto; una compra simulada no demuestra entrega al correo. Probar el recibo con envío manual desde Stripe a un destinatario autorizado y revisar el historial de recibos. El sandbox puede restringir destinatarios a miembros del equipo o dominios verificados.
+- El recibo de Stripe es un comprobante de pago; no sustituye un CFDI ni activa correos de cotizaciones, citas o reportes. No se habilita `invoice_creation` ni un proveedor de correo adicional para este flujo.
+
+Fuentes: https://docs.stripe.com/receipts ; https://docs.stripe.com/api/checkout/sessions/create ; https://support.stripe.com/questions/set-up-account-email-notifications
+
 ## Fuentes del plan
 
 - https://docs.stripe.com/payments/accept-a-payment?payment-ui=checkout&ui=stripe-hosted
