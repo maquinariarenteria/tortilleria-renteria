@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Lock, Eye, EyeOff, ShieldCheck, Key, ArrowLeft, Cloud, CheckCircle2 } from 'lucide-react';
-import { AdminService, CLOUDFLARE_CONFIG_INFO } from '../../services/adminService';
+import { Eye, EyeOff, ShieldCheck, Key, ArrowLeft } from 'lucide-react';
+import { AdminService } from '../../services/adminService';
 
 interface AdminAuthModalProps {
   onSuccess: () => void;
@@ -12,7 +12,6 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onExi
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [showSecretHelp, setShowSecretHelp] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +38,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onExi
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 font-sans">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 font-sans" role="dialog" aria-modal="true" aria-labelledby="admin-login-title">
       <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 sm:p-8 text-slate-900">
         
         {/* Header with Official Logo */}
@@ -55,7 +54,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onExi
 
         {/* Title */}
         <div className="text-center mb-6">
-          <h2 className="text-xl font-black tracking-tight text-slate-900 uppercase">
+          <h2 id="admin-login-title" className="text-xl font-black tracking-tight text-slate-900 uppercase">
             MAQUINARIA <span className="text-[#2563eb]">RENTERIA</span>
           </h2>
           <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-0.5">
@@ -66,22 +65,24 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onExi
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+            <label htmlFor="admin-password" className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center">
               <span className="flex items-center gap-1.5">
                 <Key className="w-3.5 h-3.5 text-[#2563eb]" />
-                Clave Secreta de Cloudflare
+                Contraseña de administrador
               </span>
-              <button
-                type="button"
-                onClick={() => setShowSecretHelp(!showSecretHelp)}
-                className="text-[11px] text-[#2563eb] hover:text-[#1d4ed8] underline font-semibold cursor-pointer lowercase"
-              >
-                ¿dónde se asigna?
-              </button>
             </label>
             <div className="relative">
               <input
+                id="admin-password"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                required
+                aria-describedby="admin-password-help"
+                aria-invalid={!!errorMessage}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Ingresa tu clave de acceso..."
@@ -91,15 +92,19 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onExi
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            <p id="admin-password-help" className="mt-2 text-xs text-slate-600 leading-relaxed">
+              Usa la contraseña que ya se configuró. Es la misma en todos los equipos y navegadores; no necesitas registrar una nueva.
+            </p>
           </div>
 
           {errorMessage && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium">
+            <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium">
               {errorMessage}
             </div>
           )}
@@ -112,7 +117,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onExi
             {isLoading ? (
               <>
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                <span>Verificando con Cloudflare...</span>
+                <span>Verificando acceso...</span>
               </>
             ) : (
               <>
@@ -122,31 +127,6 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onExi
             )}
           </button>
         </form>
-
-        {/* Cloudflare Secret Help Box */}
-        {showSecretHelp && (
-          <div className="mt-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 space-y-2">
-            <div className="flex items-center gap-2 text-[#2563eb] font-bold">
-              <Cloud className="w-4 h-4" />
-              <span>Configuración de la Clave en Cloudflare</span>
-            </div>
-            <p className="text-[11px] text-slate-600">
-              El nombre del secreto que debes asignar en Cloudflare es:
-            </p>
-            <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-300 font-mono text-[#2563eb] font-bold text-xs flex items-center justify-between">
-              <span>{CLOUDFLARE_CONFIG_INFO.secretName}</span>
-              <span className="text-[10px] text-slate-400 font-sans">Variable Secreta</span>
-            </div>
-            <p className="text-[11px] text-slate-600 leading-relaxed">
-              En tu terminal puedes ejecutar: <br />
-              <code className="text-[#2563eb] bg-blue-50 px-1 py-0.5 rounded font-mono">npx wrangler secret put {CLOUDFLARE_CONFIG_INFO.secretName}</code>
-            </p>
-            <div className="pt-1 text-[11px] text-emerald-700 flex items-center gap-1.5 border-t border-slate-200 font-medium">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Clave provisional de desarrollo: <b>renteria2026</b></span>
-            </div>
-          </div>
-        )}
 
         {/* Exit Button */}
         <div className="mt-6 pt-4 border-t border-slate-100 flex justify-center">

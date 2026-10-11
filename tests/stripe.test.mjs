@@ -138,3 +138,26 @@ test('Admin orders require a signed session; fake prefixes and wrong passwords f
   const response = await worker.fetch(request('/api/admin/stripe-orders', undefined, { Authorization: 'Bearer ' + login.token }), env);
   assert.equal(response.status, 200); assert.deepEqual((await response.json()).orders, []);
 });
+test('The same configured password works in separate browsers without device registration', async () => {
+  const { env, DB } = setup();
+  env.ADMIN_PASSWORD = 'fixture-A>\"/symbols-123';
+  const browserA = { 'User-Agent': 'Browser A', 'CF-Connecting-IP': '192.0.2.10' };
+  const browserB = { 'User-Agent': 'Browser B', 'CF-Connecting-IP': '192.0.2.11' };
+  const loginA = await worker.fetch(request('/api/admin/login', { password: env.ADMIN_PASSWORD }, browserA), env);
+  const loginB = await worker.fetch(request('/api/admin/login', { password: env.ADMIN_PASSWORD }, browserB), env);
+  assert.equal(loginA.status, 200);
+  assert.equal(loginB.status, 200);
+  const cookieA = loginA.headers.get('Set-Cookie').split(';')[0];
+  const cookieB = loginB.headers.get('Set-Cookie').split(';')[0];
+  assert.notEqual(cookieA, cookieB);
+  assert.equal(DB.sqlite.prepare('SELECT COUNT(*) AS n FROM admin_sessions').get().n, 2);
+  for (const [browser, cookie] of [[browserA, cookieA], [browserB, cookieB]]) {
+    assert.equal((await worker.fetch(request('/api/admin/verify', undefined, { ...browser, Cookie: cookie }), env)).status, 200);
+  }
+  assert.equal((await worker.fetch(request('/api/admin/logout', {}, { ...browserA, Cookie: cookieA }), env)).status, 200);
+  assert.equal((await worker.fetch(request('/api/admin/verify', undefined, { ...browserA, Cookie: cookieA }), env)).status, 401);
+  assert.equal((await worker.fetch(request('/api/admin/verify', undefined, { ...browserB, Cookie: cookieB }), env)).status, 200);
+  for (const password of [env.ADMIN_PASSWORD.replace('>', '<'), env.ADMIN_PASSWORD.toUpperCase()]) {
+    assert.equal((await worker.fetch(request('/api/admin/login', { password }, browserB), env)).status, 401);
+  }
+});
