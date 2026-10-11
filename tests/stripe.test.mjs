@@ -32,8 +32,10 @@ async function withStripe(callback) {
   let emailResponse = async () => Response.json({ success: 'true' });
   globalThis.fetch = async (url, init) => {
     if (String(url).startsWith('https://formsubmit.co/ajax/')) {
-      const email = { url: String(url), body: JSON.parse(init.body) };
-      emailCalls.push(email); return emailResponse(email);
+      const email = { url: String(url), body: JSON.parse(init.body), headers: Object.fromEntries(new Headers(init.headers)) };
+      emailCalls.push(email);
+      if (email.headers.referer !== email.body._url) return Response.json({ success: 'false', message: 'Make sure you open this page through a web server' });
+      return emailResponse(email);
     }
     assert.ok(String(url).startsWith('https://api.stripe.com/'));
     if (init?.method === 'POST') {
@@ -192,6 +194,7 @@ test('Only a verified paid order sends complete data; duplicate webhooks send on
   assert.equal((await worker.fetch(await eventRequest('checkout.session.async_payment_succeeded', session), env)).status, 200);
   assert.equal(emailCalls.length, 1); assert.equal(notice(DB).status, 'sent'); assert.equal(DB.paidTransitions, 1);
   const email = emailCalls[0]; assert.equal(email.url, 'https://formsubmit.co/ajax/owner%40example.com');
+  assert.equal(email.headers.origin, 'https://shop.example.com'); assert.equal(email.headers.referer, 'https://shop.example.com/');
   for (const value of [customer.email, customer.phone, customer.address, customer.city, '33000', 'XAXX010101000', 'Empresa ficticia', product.name, product.sku, session.id, session.payment_intent, 'Flete aparte', 'NO ES UN COBRO REAL']) assert.ok(email.body.message.includes(value), value);
   assert.ok(email.body._subject.startsWith('[PRUEBA]'));
   assert.equal(email.body.email, customer.email);
@@ -273,4 +276,19 @@ test('Email diagnostics require admin authentication and have a sending limit; a
   env.ORDER_NOTIFICATION_ENABLED = 'true'; await processPendingOrderEmails(env);
   assert.equal(notice(DB).status, 'blocked'); assert.equal(emailCalls.length, 3);
   const health = await (await worker.fetch(request('/api/admin/health', undefined, headers), env)).json(); assert.equal(health.orderEmail.blocked, 1);
+}));
+
+test('Activation responses retain one notice without re-sending; a successful test confirms the recipient activation', async () => withStripe(async ({ sessions, emailCalls, setEmailResponse }) => {
+  const { env, DB } = emailSetup(); const session = await checkout(env, sessions); session.payment_status = 'paid';
+  setEmailResponse(async () => Response.json({ success: 'false', message: "This form needs Activation. We've sent you an email containing an 'Activate Form' link." }));
+  assert.equal((await worker.fetch(await eventRequest('checkout.session.completed', session), env)).status, 200);
+  assert.equal(notice(DB).status, 'sent'); assert.equal(notice(DB).last_error, 'activation_required');
+  await processPendingOrderEmails(env); await worker.fetch(await eventRequest('checkout.session.completed', session), env); assert.equal(emailCalls.length, 1);
+  const login = await (await worker.fetch(request('/api/admin/login', { password: env.ADMIN_PASSWORD }), env)).json(); const headers = { Authorization: 'Bearer ' + login.token };
+  let health = await (await worker.fetch(request('/api/admin/health', undefined, headers), env)).json(); assert.equal(health.orderEmail.activationPending, 1); assert.equal(health.orderEmail.sent, 0);
+  const pending = await (await worker.fetch(request('/api/admin/order-notifications/test', {}, headers), env)).json(); assert.equal(pending.activationRequired, true);
+  setEmailResponse(async () => Response.json({ success: 'true' }));
+  const accepted = await (await worker.fetch(request('/api/admin/order-notifications/test', {}, headers), env)).json(); assert.equal(accepted.activationRequired, false);
+  assert.equal(notice(DB).last_error, null);
+  health = await (await worker.fetch(request('/api/admin/health', undefined, headers), env)).json(); assert.equal(health.orderEmail.sent, 1); assert.equal(health.orderEmail.activationPending, 0);
 }));

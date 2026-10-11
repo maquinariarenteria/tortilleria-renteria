@@ -17,6 +17,7 @@ export const SaludWebTab: React.FC = () => {
       <h3 className="font-bold">Avisos de compra por correo</h3>
       <p>{health.orderEmail.provider}: {health.orderEmail.configured?'Conexión configurada':'Pendiente de configurar'}.</p>
       <p className="text-sm">Aceptados por el proveedor: {health.orderEmail.sent} · Pendientes: {health.orderEmail.pending} · Requieren revisión: {health.orderEmail.blocked}.</p>
+      {health.orderEmail.activationPending>0&&<p className="text-amber-800">Avisos esperando activación del correo: {health.orderEmail.activationPending}. FormSubmit los conserva hasta que confirmes «Activate Form» en tu bandeja de entrada.</p>}
       {health.orderEmail.blocked>0&&<p role="alert" className="text-amber-800">Hay avisos que requieren revisar el envío. Los pagos y pedidos siguen registrados en Ventas.</p>}
       <button onClick={testEmail} disabled={sendingTest||!health.orderEmail.configured} className="bg-blue-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{sendingTest?'Enviando prueba…':'Enviar correo de prueba'}</button>
       {emailMessage&&<p role="status" className="text-sm">{emailMessage}</p>}

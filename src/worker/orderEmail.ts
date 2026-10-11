@@ -31,7 +31,7 @@ export function createOrderEmail(order: AdminSaleOrder, env: Env, payment: { pai
     ...(payment.paymentIntentId ? [`Pago Stripe: ${payment.paymentIntentId}`] : []),
     '', 'El pedido también está registrado en el administrador.', `${new URL(env.SITE_URL!).origin}/#admin`];
   const text = lines.join('\n');
-  return { subject: `${payment.test ? '[PRUEBA] ' : ''}Compra pagada · ${order.folio}`,
+  return { recipient: configuration(env).recipient, subject: `${payment.test ? '[PRUEBA] ' : ''}Compra pagada · ${order.folio}`,
     text, html: `<div style="font-family:Arial,sans-serif;max-width:720px;margin:auto;color:#172033"><h1 style="font-size:22px;color:#2563eb">Maquinaria Rentería</h1><pre style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere">${escapeHtml(text)}</pre></div>`,
     fields: { name: order.clientName, email: order.clientEmail, Telefono: order.clientPhone, Folio: order.folio,
       Estado_del_pago: heading, Direccion: order.shippingAddress, Ciudad: order.shippingCity,
@@ -42,16 +42,24 @@ export function createOrderEmail(order: AdminSaleOrder, env: Env, payment: { pai
       Razon_social: order.requiresInvoice ? order.businessName || order.clientName : 'No solicitado' } };
 }
 
-async function sendEmail(env: Env, payload: { subject: string; text: string; fields?: object }) {
-  const response = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(configuration(env).recipient)}`, { method: 'POST', headers: {
+async function sendEmail(env: Env, payload: { recipient?: string; subject: string; text: string; fields?: object }) {
+  const recipient = payload.recipient || configuration(env).recipient;
+  if (!emailAddress(recipient)) throw new Error('invalid_notification_recipient');
+  const origin = new URL(env.SITE_URL!).origin;
+  const response = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(recipient)}`, { method: 'POST', headers: {
     'Content-Type': 'application/json', Accept: 'application/json',
+    Origin: origin, Referer: `${origin}/`, 'User-Agent': 'MaquinariaRenteriaOrderNotifications/1.0',
   }, body: JSON.stringify({ ...payload.fields, _subject: payload.subject, message: payload.text,
     _template: 'table', _captcha: 'false', _honey: '', _url: `${new URL(env.SITE_URL!).origin}/` }), signal: AbortSignal.timeout(10000) });
   if (!response.ok) throw Object.assign(new Error(`formsubmit_http_${response.status}`), { status: response.status,
     confirmedRejection: response.status >= 400 && response.status < 500 });
   const data: any = await response.json();
+  // The provider retains submissions until the recipient activates the form.
+  // It returns success:false for this state even though it has queued the notice.
+  const activationRequired = typeof data.message === 'string' && /\bneeds\s+activation\b/i.test(data.message);
+  if (activationRequired) return { activationRequired: true };
   if (data.success !== true && data.success !== 'true') throw Object.assign(new Error('formsubmit_rejected'), { confirmedRejection: true });
-  return { accepted: true };
+  return { activationRequired: false };
 }
 
 export async function sendPendingOrderEmail(env: Env, orderId: string) {
@@ -76,9 +84,9 @@ export async function sendPendingOrderEmail(env: Env, orderId: string) {
     await env.DB.prepare('UPDATE order_email_notifications SET payload_json=COALESCE(payload_json,?) WHERE order_id=? AND lock_token=?')
       .bind(JSON.stringify(payload), orderId, lockToken).run();
     requestStarted = true;
-    await sendEmail(env, payload);
-    await env.DB.prepare("UPDATE order_email_notifications SET status='sent', sent_at=?, last_error=NULL, locked_until=0 WHERE order_id=? AND lock_token=?")
-      .bind(new Date().toISOString(), orderId, lockToken).run();
+    const result = await sendEmail(env, payload);
+    await env.DB.prepare("UPDATE order_email_notifications SET status='sent', sent_at=?, last_error=?, locked_until=0 WHERE order_id=? AND lock_token=?")
+      .bind(new Date().toISOString(), result.activationRequired ? 'activation_required' : null, orderId, lockToken).run();
   } catch (error) {
     const status = error && typeof error === 'object' && 'status' in error ? Number(error.status) : 0;
     const rejected = error && typeof error === 'object' && 'confirmedRejection' in error && error.confirmedRejection;
@@ -104,7 +112,8 @@ export async function processPendingOrderEmails(env: Env) {
 export async function orderEmailHealth(env: Env) {
   const { results } = await env.DB.prepare('SELECT status, COUNT(*) AS count FROM order_email_notifications GROUP BY status').all();
   const counts = Object.fromEntries(results.map((r: any) => [r.status, r.count]));
-  return { configured: orderEmailConfigured(env), provider: 'FormSubmit', pending: (counts.pending || 0) + (counts.sending || 0), sent: counts.sent || 0, blocked: counts.blocked || 0 };
+  const activation = await env.DB.prepare("SELECT COUNT(*) AS count FROM order_email_notifications WHERE status='sent' AND last_error='activation_required'").first();
+  return { configured: orderEmailConfigured(env), provider: 'FormSubmit', pending: (counts.pending || 0) + (counts.sending || 0), sent: (counts.sent || 0) - (activation?.count || 0), activationPending: activation?.count || 0, blocked: counts.blocked || 0 };
 }
 
 export async function handleOrderEmail(request: Request, env: Env): Promise<Response | null> {
@@ -116,6 +125,13 @@ export async function handleOrderEmail(request: Request, env: Env): Promise<Resp
     subject: '[PRUEBA] Avisos de compra · Maquinaria Rentería',
     text: 'Este es un correo de prueba de Maquinaria Rentería.\nLa conexión con el proveedor funciona. No corresponde a una compra ni a un cobro.\nLos pedidos pagados enviarán folio, cliente, contacto, dirección, equipos, importes y datos de facturación.\nEl registro del administrador se conserva.',
   };
-  try { await sendEmail(env, payload); return json({ success: true, message: 'FormSubmit aceptó la prueba. Revisa la bandeja de entrada y spam; si recibes un correo de activación, confirma el enlace una sola vez.' }); }
+  try {
+    const result = await sendEmail(env, payload);
+    if (!result.activationRequired) await env.DB.prepare("UPDATE order_email_notifications SET last_error=NULL WHERE status='sent' AND last_error='activation_required' AND json_extract(payload_json,'$.recipient')=?")
+      .bind(configuration(env).recipient).run();
+    return json({ success: true, activationRequired: result.activationRequired, message: result.activationRequired
+      ? 'FormSubmit envió el enlace de activación al correo de Maquinaria Rentería. Abre ese mensaje y pulsa «Activate Form»; después envía otra prueba.'
+      : 'FormSubmit aceptó el correo de prueba. Revisa la bandeja de entrada y spam para confirmar que llegó.' });
+  }
   catch { throw new HttpError(502, 'El proveedor no confirmó el envío. Revisa su configuración.'); }
 }
