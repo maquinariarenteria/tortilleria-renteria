@@ -26,8 +26,10 @@
     "ENVIRONMENT": "production",
     "SITE_URL": "https://maquinaria-renteria.com",
     "ORDER_NOTIFICATION_TO": "maquinariarenteria17@gmail.com",
+    "ORDER_NOTIFICATION_FROM": "ventas@maquinaria-renteria.com",
     "ORDER_NOTIFICATION_ENABLED": "true"
   },
+  "send_email": [{ "name": "ORDER_EMAIL", "destination_address": "maquinariarenteria17@gmail.com", "allowed_sender_addresses": ["ventas@maquinaria-renteria.com"] }],
   "triggers": { "crons": ["*/15 * * * *"] },
   "workers_dev": false,
   "preview_urls": false,

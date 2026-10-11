@@ -18,7 +18,7 @@ Plan: `iguide_61VY68rJWKOp9jrVq411LP5iYfFBx`.
 
 Conectar el plugin no entrega una clave de API al sitio ni configura Cloudflare automáticamente.
 
-1. Confirma dominio y proyecto Worker. D1 ya creada: `tortilleria-renteria-db`, identificador `ac44058f-141b-4dd0-8cfe-7e7df1aaf67d`. SITE_URL apunta al dominio actual workers.dev. R2 todavía no está activado en la cuenta y su vínculo opcional se excluye del despliegue hasta configurarlo.
+1. Confirma dominio y proyecto Worker. D1 ya creada: `tortilleria-renteria-db`, identificador `ac44058f-141b-4dd0-8cfe-7e7df1aaf67d`. SITE_URL apunta a `https://maquinaria-renteria.com`. R2 todavía no está activado en la cuenta y su vínculo opcional se excluye del despliegue hasta configurarlo.
 2. En el entorno de prueba autorizado, crea una **clave restringida** para este Worker con acceso de lectura/escritura a Checkout Sessions y permisos necesarios para los precios y productos usados en `price_data`. Verifica permisos con una sesión de prueba. No guardes claves en GitHub ni en variables `VITE_*`.
 3. Configura en Cloudflare, como secretos del Worker:
    - `STRIPE_SECRET_KEY`: la clave restringida del mismo entorno de prueba.
@@ -60,24 +60,23 @@ Antes de activar producción probar: compra completa al 100%, rechazo de anticip
 
 - El carrito exige un correo válido para pagar con tarjeta; el servidor lo vuelve a validar antes de crear Checkout.
 - El Worker pasa ese correo como `customer_email` y `payment_intent_data.receipt_email`. En compras reales, Stripe envía el recibo al confirmarse el pago, incluso si la opción general de recibos no está activada. La descripción y metadata del pago incluyen el folio del pedido.
-- Stripe puede enviar un aviso adicional al usuario de su cuenta: Configuración → Preferencias de comunicación → Transacciones y saldos → «Recibo de pago exitoso - Email». El aviso completo de esta tienda se envía por FormSubmit al correo configurado en `ORDER_NOTIFICATION_TO`.
+- Stripe puede enviar un aviso adicional al usuario de su cuenta: Configuración → Preferencias de comunicación → Transacciones y saldos → «Recibo de pago exitoso - Email». El aviso completo de esta tienda se envía por Cloudflare Email Service al correo configurado en `ORDER_NOTIFICATION_TO`.
 - Para activar también los recibos generales: Configuración → Empresa → Correos electrónicos de clientes → Pagos efectuados correctamente. Revisar esta opción y el aviso al vendedor en la cuenta real antes del lanzamiento.
 - Stripe no envía automáticamente los recibos de compras de prueba por defecto; una compra simulada no demuestra entrega al correo. Probar el recibo con envío manual desde Stripe a un destinatario autorizado y revisar el historial de recibos. El sandbox puede restringir destinatarios a miembros del equipo o dominios verificados.
 - El recibo de Stripe es un comprobante de pago; no sustituye un CFDI ni activa correos de cotizaciones, citas o reportes. No se habilita `invoice_creation`.
 
-### Aviso completo al vendedor por FormSubmit
+### Aviso completo al vendedor por Cloudflare
 
-- Destinatario autorizado: `maquinariarenteria17@gmail.com`. Servicio gratuito que no requiere crear una cuenta; la primera vez puede requerir activar el formulario desde el mensaje que llega a esa dirección.
+- Destinatario autorizado: `maquinariarenteria17@gmail.com`. Remitente: `ventas@maquinaria-renteria.com`. Los envíos a este destino verificado son gratuitos con la cuenta existente de Cloudflare; no se activa el plan de pago para enviar a destinatarios arbitrarios.
+- Configurar el dominio en Email Service y verificar el destinatario mediante «Verify email address». `send_email` vincula `ORDER_EMAIL` al Worker, restringido al destinatario y remitente indicados. Configurar `ORDER_NOTIFICATION_ENABLED=true`, `ORDER_NOTIFICATION_TO` y `ORDER_NOTIFICATION_FROM`. No se usa una clave API ni un endpoint público para enviar correos arbitrarios.
 - Aplicar `migrations/0004_order_email_notifications.sql` antes del despliegue. El pago confirmado y su aviso pendiente se escriben juntos mediante una transacción D1. El pedido sigue apareciendo en Ventas aunque el proveedor falle.
-- `ORDER_NOTIFICATION_ENABLED=true` y `ORDER_NOTIFICATION_TO` se configuran en el Worker. No se usa una clave API ni se expone un endpoint público para enviar correos arbitrarios.
 - El webhook firmado y la consulta verificada de Stripe comparten la confirmación de pago. No se envían avisos de pagos pendientes, fallidos, manipulados o cancelados. Eventos repetidos y concurrentes no duplican el aviso. No se envían automáticamente las compras antiguas que ya estaban pagadas antes de esta migración.
-- Se incluye folio, fecha, nombre, teléfono, correo, dirección, ciudad, estado, código postal, equipos y variantes, SKU, cantidades, precios, subtotal, IVA, total, importe pagado, saldo, flete por coordinar, factura solicitada, RFC, razón social y referencias Stripe. Las simulaciones se identifican con `[PRUEBA]`. No se incluyen claves, tokens de acceso ni datos de tarjeta.
-- Se intenta enviar en segundo plano con `waitUntil`. Los rechazos explícitos por límite de peticiones se reintentan cada 15 minutos con espera creciente. FormSubmit no documenta deduplicación por clave: si la entrega queda incierta por un timeout o una interrupción, el aviso queda para revisión y no se reenvía automáticamente, para evitar duplicados.
-- En Salud de la web se muestra conexión, avisos aceptados, pendientes y avisos que requieren revisión. El botón de prueba requiere sesión de administrador y permite tres envíos por hora. No crea ventas ni cobra.
-- Se envía el origen real del sitio en `Origin`, `Referer` y `_url`, que FormSubmit usa para identificar el formulario. El destinatario y contenido originales se conservan en cada aviso.
-- `sent` significa que el proveedor aceptó o retuvo la solicitud, no que se verificó la llegada a la bandeja de entrada. Una respuesta que indica `needs Activation` se marca con `activation_required` y se muestra aparte en Salud de la web; no se vuelve a enviar porque FormSubmit conserva la solicitud y la entrega al confirmar el formulario. Una prueba aceptada después de activar ese destinatario actualiza el indicador. Comprobar el correo de prueba y el de una compra simulada en la bandeja de entrada o spam antes de dar por terminada la activación.
+- Se incluye folio, fecha, nombre, teléfono, correo, dirección, ciudad, estado, código postal, equipos y variantes, SKU, cantidades, precios, subtotal, IVA, total, importe pagado, saldo, flete por coordinar, factura solicitada, RFC, razón social y referencias Stripe. Las simulaciones se identifican con `[PRUEBA]`. No se incluyen claves, tokens de acceso ni datos de tarjeta. El contenido HTML se escapa y Reply-To permite responder al cliente.
+- Se intenta enviar en segundo plano con `waitUntil`. Un rechazo explícito por límite de peticiones o por falta de verificación conserva el aviso pendiente; se reintenta cada 15 minutos con espera creciente. El contenido, destinatario y remitente se conservan en cada aviso. Si la entrega queda incierta por una interrupción, queda para revisión y no se reenvía automáticamente, para evitar duplicados.
+- En Salud de la web se muestran conexión, avisos aceptados, pendientes, pendientes de verificación y avisos que requieren revisión. El botón de prueba requiere sesión de administrador y permite tres envíos por hora para este proveedor. No crea ventas ni cobra. Una prueba aceptada permite reintentar los avisos pendientes de verificación.
+- `sent` significa que Cloudflare devolvió un identificador de aceptación, no que se verificó la llegada a la bandeja de entrada. Comprobar el correo de prueba y el de una compra simulada en la bandeja de entrada o spam antes de dar por terminada la activación.
 
-Fuentes del proveedor: https://formsubmit.co/ ; https://formsubmit.co/documentation ; https://formsubmit.co/ajax-documentation ; https://formsubmit.co/help
+Fuentes del proveedor: https://developers.cloudflare.com/email-service/platform/pricing/ ; https://developers.cloudflare.com/email-service/api/send-emails/workers-api/ ; https://developers.cloudflare.com/email-service/configuration/email-routing-addresses/
 
 Fuentes: https://docs.stripe.com/receipts ; https://docs.stripe.com/api/checkout/sessions/create ; https://support.stripe.com/questions/set-up-account-email-notifications
 

@@ -24,19 +24,15 @@ function setup() {
   return { env, DB };
 }
 function request(path, body, headers = {}) { return new Request('https://shop.example.com' + path, { method: body === undefined ? 'GET' : 'POST', headers: { Origin: 'https://shop.example.com', 'Content-Type': 'application/json', ...headers }, body: body === undefined ? undefined : JSON.stringify(body) }); }
+let mockEmailBinding;
 async function withStripe(callback) {
   const original = globalThis.fetch;
   const sessions = new Map();
   const calls = [];
   const emailCalls = [];
-  let emailResponse = async () => Response.json({ success: 'true' });
+  let emailResponse = async () => ({ messageId: `fixture_email_${emailCalls.length}` });
+  mockEmailBinding = { send: async message => { emailCalls.push(structuredClone(message)); return emailResponse(message); } };
   globalThis.fetch = async (url, init) => {
-    if (String(url).startsWith('https://formsubmit.co/ajax/')) {
-      const email = { url: String(url), body: JSON.parse(init.body), headers: Object.fromEntries(new Headers(init.headers)) };
-      emailCalls.push(email);
-      if (email.headers.referer !== email.body._url) return Response.json({ success: 'false', message: 'Make sure you open this page through a web server' });
-      return emailResponse(email);
-    }
     assert.ok(String(url).startsWith('https://api.stripe.com/'));
     if (init?.method === 'POST') {
       const params = new URLSearchParams(init.body);
@@ -172,7 +168,8 @@ test('The same configured password works in separate browsers without device reg
   }
 });
 
-function emailSetup() { const { env, DB } = setup(); env.ORDER_NOTIFICATION_ENABLED = 'true'; env.ORDER_NOTIFICATION_TO = 'owner@example.com'; return { env, DB }; }
+function configureEmail(env) { env.ORDER_NOTIFICATION_ENABLED = 'true'; env.ORDER_NOTIFICATION_TO = 'owner@example.com'; env.ORDER_NOTIFICATION_FROM = 'sales@shop.example.com'; env.ORDER_EMAIL = mockEmailBinding; }
+function emailSetup() { const { env, DB } = setup(); configureEmail(env); return { env, DB }; }
 async function checkout(env, sessions, change = {}) {
   const response = await worker.fetch(request('/api/stripe/create-checkout-session', payload(change)), env);
   assert.equal(response.status, 200); const data = await response.json(); return sessions.get(data.id);
@@ -193,14 +190,13 @@ test('Only a verified paid order sends complete data; duplicate webhooks send on
   assert.equal((await worker.fetch(await eventRequest('checkout.session.completed', session), env)).status, 200);
   assert.equal((await worker.fetch(await eventRequest('checkout.session.async_payment_succeeded', session), env)).status, 200);
   assert.equal(emailCalls.length, 1); assert.equal(notice(DB).status, 'sent'); assert.equal(DB.paidTransitions, 1);
-  const email = emailCalls[0]; assert.equal(email.url, 'https://formsubmit.co/ajax/owner%40example.com');
-  assert.equal(email.headers.origin, 'https://shop.example.com'); assert.equal(email.headers.referer, 'https://shop.example.com/');
-  for (const value of [customer.email, customer.phone, customer.address, customer.city, '33000', 'XAXX010101000', 'Empresa ficticia', product.name, product.sku, session.id, session.payment_intent, 'Flete aparte', 'NO ES UN COBRO REAL']) assert.ok(email.body.message.includes(value), value);
-  assert.ok(email.body._subject.startsWith('[PRUEBA]'));
-  assert.equal(email.body.email, customer.email);
-  assert.equal(email.body.Pagado, email.body.Total);
+  const email = emailCalls[0]; assert.equal(email.to, 'owner@example.com'); assert.equal(email.from, 'sales@shop.example.com');
+  for (const value of [customer.email, customer.phone, customer.address, customer.city, '33000', 'XAXX010101000', 'Empresa ficticia', product.name, product.sku, session.id, session.payment_intent, 'Flete aparte', 'NO ES UN COBRO REAL']) assert.ok(email.text.includes(value), value);
+  assert.ok(email.subject.startsWith('[PRUEBA]'));
+  assert.equal(email.replyTo, customer.email);
+  assert.ok(email.text.includes('Saldo de equipos: $0.00 MXN'));
   const frozen = JSON.parse(notice(DB).payload_json); assert.ok(frozen.html.includes('&lt;img')); assert.ok(!frozen.html.includes('<img src=x'));
-  assert.ok(!email.body.message.includes([...DB.rows.values()][0].access_token));
+  assert.ok(!email.text.includes([...DB.rows.values()][0].access_token));
 }));
 
 test('A provider outage preserves the paid sale and flags uncertain delivery without duplicating it', async () => withStripe(async ({ sessions, emailCalls, setEmailResponse }) => {
@@ -216,23 +212,23 @@ test('A provider outage preserves the paid sale and flags uncertain delivery wit
   assert.equal(orders.orders.length, 1); assert.equal(orders.orders[0].amountPaid, product.priceMXN);
 }));
 
-test('Explicit provider rate rejection is retried with the original notice; success:false cannot look sent', async () => withStripe(async ({ sessions, emailCalls, setEmailResponse }) => {
+test('Explicit provider rate rejection is retried with the original notice; a missing acceptance ID cannot look sent', async () => withStripe(async ({ sessions, emailCalls, setEmailResponse }) => {
   const { env, DB } = emailSetup(); const session = await checkout(env, sessions); session.payment_status = 'paid';
-  setEmailResponse(async () => Response.json({ success: false }, { status: 429 }));
+  setEmailResponse(async () => { throw Object.assign(new Error('fixture rejection'), { code: 'E_RATE_LIMIT_EXCEEDED' }); });
   await worker.fetch(await eventRequest('checkout.session.completed', session), env);
   assert.equal(notice(DB).status, 'pending'); await processPendingOrderEmails(env); assert.equal(emailCalls.length, 1);
   DB.sqlite.prepare('UPDATE order_email_notifications SET next_attempt_at=0').run();
-  setEmailResponse(async () => Response.json({ success: 'true' })); await processPendingOrderEmails(env);
-  assert.equal(emailCalls.length, 2); assert.deepEqual(emailCalls[0].body, emailCalls[1].body); assert.equal(notice(DB).status, 'sent');
+  setEmailResponse(async () => ({ messageId: 'fixture_accepted' })); await processPendingOrderEmails(env);
+  assert.equal(emailCalls.length, 2); assert.deepEqual(emailCalls[0], emailCalls[1]); assert.equal(notice(DB).status, 'sent');
   const other = await checkout(env, sessions); other.payment_status = 'paid';
-  setEmailResponse(async () => Response.json({ success: false })); await worker.fetch(await eventRequest('checkout.session.completed', other), env);
+  setEmailResponse(async () => ({})); await worker.fetch(await eventRequest('checkout.session.completed', other), env);
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) AS n FROM order_email_notifications WHERE status='blocked'").get().n, 1);
 }));
 
 test('Concurrent payment confirmations and retries cannot send two notifications', async () => withStripe(async ({ sessions, emailCalls, setEmailResponse }) => {
   const { env, DB } = emailSetup(); const session = await checkout(env, sessions); session.payment_status = 'paid';
   let release; let reached; const reachedProvider = new Promise(r => { reached = r; });
-  setEmailResponse(() => { reached(); return new Promise(r => { release = () => r(Response.json({ success: true })); }); });
+  setEmailResponse(() => { reached(); return new Promise(r => { release = () => r({ messageId: 'fixture_concurrent' }); }); });
   const first = worker.fetch(await eventRequest('checkout.session.completed', session), env);
   await reachedProvider;
   const second = await worker.fetch(await eventRequest('checkout.session.async_payment_succeeded', session), env);
@@ -244,8 +240,8 @@ test('Durable queue retains original test mode and never backfills already-paid 
   const { env, DB } = setup(); const session = await checkout(env, sessions); session.payment_status = 'paid';
   await worker.fetch(await eventRequest('checkout.session.completed', session), env);
   assert.equal(notice(DB).status, 'pending'); assert.equal(notice(DB).is_test, 1); assert.equal(emailCalls.length, 0);
-  env.ORDER_NOTIFICATION_ENABLED = 'true'; env.ORDER_NOTIFICATION_TO = 'owner@example.com'; env.STRIPE_SECRET_KEY = 'sk_live_fixture_only';
-  await processPendingOrderEmails(env); assert.ok(emailCalls[0].body._subject.startsWith('[PRUEBA]'));
+  configureEmail(env); env.STRIPE_SECRET_KEY = 'sk_live_fixture_only';
+  await processPendingOrderEmails(env); assert.ok(emailCalls[0].subject.startsWith('[PRUEBA]'));
   const legacy = await checkout({ ...env, STRIPE_SECRET_KEY: 'test_fixture_only' }, sessions); legacy.payment_status = 'paid';
   DB.sqlite.prepare("UPDATE stripe_orders SET payment_status='paid',paid_at='2026-01-01T00:00:00Z' WHERE id=?").run(legacy.client_reference_id);
   await worker.fetch(await eventRequest('checkout.session.completed', legacy), { ...env, STRIPE_SECRET_KEY: 'test_fixture_only' });
@@ -278,17 +274,27 @@ test('Email diagnostics require admin authentication and have a sending limit; a
   const health = await (await worker.fetch(request('/api/admin/health', undefined, headers), env)).json(); assert.equal(health.orderEmail.blocked, 1);
 }));
 
-test('Activation responses retain one notice without re-sending; a successful test confirms the recipient activation', async () => withStripe(async ({ sessions, emailCalls, setEmailResponse }) => {
+test('An unverified destination retains its notice; verification allows a safe retry', async () => withStripe(async ({ sessions, emailCalls, setEmailResponse }) => {
   const { env, DB } = emailSetup(); const session = await checkout(env, sessions); session.payment_status = 'paid';
-  setEmailResponse(async () => Response.json({ success: 'false', message: "This form needs Activation. We've sent you an email containing an 'Activate Form' link." }));
+  setEmailResponse(async () => { throw Object.assign(new Error('fixture destination'), { code: 'E_RECIPIENT_NOT_ALLOWED' }); });
   assert.equal((await worker.fetch(await eventRequest('checkout.session.completed', session), env)).status, 200);
-  assert.equal(notice(DB).status, 'sent'); assert.equal(notice(DB).last_error, 'activation_required');
+  assert.equal(notice(DB).status, 'pending'); assert.equal(notice(DB).last_error, 'email_verification_required');
   await processPendingOrderEmails(env); await worker.fetch(await eventRequest('checkout.session.completed', session), env); assert.equal(emailCalls.length, 1);
   const login = await (await worker.fetch(request('/api/admin/login', { password: env.ADMIN_PASSWORD }), env)).json(); const headers = { Authorization: 'Bearer ' + login.token };
   let health = await (await worker.fetch(request('/api/admin/health', undefined, headers), env)).json(); assert.equal(health.orderEmail.activationPending, 1); assert.equal(health.orderEmail.sent, 0);
-  const pending = await (await worker.fetch(request('/api/admin/order-notifications/test', {}, headers), env)).json(); assert.equal(pending.activationRequired, true);
-  setEmailResponse(async () => Response.json({ success: 'true' }));
-  const accepted = await (await worker.fetch(request('/api/admin/order-notifications/test', {}, headers), env)).json(); assert.equal(accepted.activationRequired, false);
-  assert.equal(notice(DB).last_error, null);
+  const pending = await worker.fetch(request('/api/admin/order-notifications/test', {}, headers), env); assert.equal(pending.status, 409); assert.ok((await pending.json()).error.includes('Verify email address'));
+  setEmailResponse(async () => ({ messageId: 'fixture_accepted' }));
+  assert.equal((await worker.fetch(request('/api/admin/order-notifications/test', {}, headers), env)).status, 200);
+  assert.equal(notice(DB).status, 'pending'); await processPendingOrderEmails(env);
+  assert.equal(notice(DB).status, 'sent'); assert.equal(notice(DB).last_error, null); assert.equal(emailCalls.length, 4);
   health = await (await worker.fetch(request('/api/admin/health', undefined, headers), env)).json(); assert.equal(health.orderEmail.sent, 1); assert.equal(health.orderEmail.activationPending, 0);
+}));
+
+test('A missing binding or a sender outside the store domain cannot send a notice', async () => withStripe(async ({ sessions, emailCalls }) => {
+  const { env, DB } = emailSetup(); env.ORDER_NOTIFICATION_FROM = 'sender@other.example.com';
+  const session = await checkout(env, sessions); session.payment_status = 'paid';
+  await worker.fetch(await eventRequest('checkout.session.completed', session), env);
+  assert.equal(notice(DB).status, 'pending'); assert.equal(emailCalls.length, 0);
+  configureEmail(env); delete env.ORDER_EMAIL; await processPendingOrderEmails(env); assert.equal(emailCalls.length, 0);
+  env.ORDER_EMAIL = mockEmailBinding; await processPendingOrderEmails(env); assert.equal(notice(DB).status, 'sent'); assert.equal(emailCalls.length, 1);
 }));

@@ -14,6 +14,8 @@ export interface Env {
   STRIPE_WEBHOOK_SECRET?: string;
   ORDER_NOTIFICATION_ENABLED?: string;
   ORDER_NOTIFICATION_TO?: string;
+  ORDER_NOTIFICATION_FROM?: string;
+  ORDER_EMAIL?: { send(message: { to: string; from: string; subject: string; text: string; html?: string; replyTo?: string }): Promise<{ messageId: string }> };
   SITE_URL?: string;
   DB?: any;
   MEDIA_BUCKET?: any;

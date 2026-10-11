@@ -17,11 +17,11 @@ export const SaludWebTab: React.FC = () => {
       <h3 className="font-bold">Avisos de compra por correo</h3>
       <p>{health.orderEmail.provider}: {health.orderEmail.configured?'Conexión configurada':'Pendiente de configurar'}.</p>
       <p className="text-sm">Aceptados por el proveedor: {health.orderEmail.sent} · Pendientes: {health.orderEmail.pending} · Requieren revisión: {health.orderEmail.blocked}.</p>
-      {health.orderEmail.activationPending>0&&<p className="text-amber-800">Avisos esperando activación del correo: {health.orderEmail.activationPending}. FormSubmit los conserva hasta que confirmes «Activate Form» en tu bandeja de entrada.</p>}
+      {health.orderEmail.activationPending>0&&<p className="text-amber-800">Avisos esperando verificación del correo: {health.orderEmail.activationPending}. Se conservan en la tienda hasta que confirmes «Verify email address» en el mensaje de Cloudflare.</p>}
       {health.orderEmail.blocked>0&&<p role="alert" className="text-amber-800">Hay avisos que requieren revisar el envío. Los pagos y pedidos siguen registrados en Ventas.</p>}
       <button onClick={testEmail} disabled={sendingTest||!health.orderEmail.configured} className="bg-blue-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{sendingTest?'Enviando prueba…':'Enviar correo de prueba'}</button>
       {emailMessage&&<p role="status" className="text-sm">{emailMessage}</p>}
-      <p className="text-sm text-slate-600">La aceptación del proveedor no confirma llegada a la bandeja de entrada. La primera vez puede llegar un mensaje de FormSubmit para activar el correo; confirma ese enlace y revisa spam.</p>
+      <p className="text-sm text-slate-600">La aceptación del proveedor no confirma llegada a la bandeja de entrada. Cloudflare requiere verificar el correo de Maquinaria Rentería una sola vez; confirma «Verify email address» y revisa spam.</p>
     </section>}
     <p className="text-sm text-slate-600">Esta comprobación mide una respuesta del servidor. La disponibilidad histórica, el uso de caché y Core Web Vitals requieren monitoreo de usuarios reales.</p>
     <a className="text-blue-600 underline" href="https://dash.cloudflare.com/" target="_blank" rel="noopener noreferrer">Consultar métricas de Cloudflare</a>
