@@ -133,5 +133,10 @@ export async function handleOrderEmail(request: Request, env: Env): Promise<Resp
       ? 'FormSubmit envió el enlace de activación al correo de Maquinaria Rentería. Abre ese mensaje y pulsa «Activate Form»; después envía otra prueba.'
       : 'FormSubmit aceptó el correo de prueba. Revisa la bandeja de entrada y spam para confirmar que llegó.' });
   }
-  catch { throw new HttpError(502, 'El proveedor no confirmó el envío. Revisa su configuración.'); }
+  catch (error) {
+    const code = error instanceof Error && /^(formsubmit_http_\d{3}|formsubmit_rejected|invalid_notification_recipient)$/.test(error.message)
+      ? error.message : error instanceof Error ? error.name : 'ServiceError';
+    console.error('Order email diagnostic failed:', code); // Codes only; no customer or provider content.
+    throw new HttpError(502, 'El proveedor no confirmó el envío. Revisa su configuración.');
+  }
 }
