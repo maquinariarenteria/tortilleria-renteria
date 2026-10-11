@@ -1,10 +1,11 @@
 import Stripe from 'stripe';
-import type { Env } from './index';
+import type { Env, WorkerContext } from './index';
 import type { AdminSaleOrder } from '../types/admin';
 import { MACHINES_DATA } from '../data/machines';
 import { getProductPrice } from '../utils/formatters';
 import { digest, readJson, readBytes } from './security';
 import { auditLog, readCatalog } from './records';
+import { createOrderEmail, orderEmailRoutingConfigured, sendPendingOrderEmail } from './orderEmail';
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
   status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
@@ -71,19 +72,31 @@ export async function buildStripeOrder(body: any, env: Env) {
   return { order, amount, total, currency, paymentType: 'full' as const };
 }
 
-async function confirmPayment(session: Stripe.Checkout.Session, env: Env) {
+async function confirmPayment(session: Stripe.Checkout.Session, env: Env, context?: WorkerContext) {
   if (session.payment_status !== 'paid') return;
   if (session.livemode !== /^(sk|rk)_live_/.test(env.STRIPE_SECRET_KEY!)) throw new Error('Payment environment mismatch');
   const row = await env.DB.prepare('SELECT * FROM stripe_orders WHERE session_id = ? OR id = ?').bind(session.id, session.client_reference_id).first();
   if (!row) throw new Error('Unknown Stripe session'); // Retry if a webhook races with checkout persistence.
   if (session.amount_total !== row.amount_due || session.currency !== row.currency.toLowerCase() || session.client_reference_id !== row.id) throw new Error('Payment mismatch');
   if (row.session_id && row.session_id !== session.id) throw new Error('Payment reference mismatch');
-  // One conditional UPDATE makes retries and concurrent deliveries idempotent.
-  await env.DB.prepare("UPDATE stripe_orders SET payment_status = 'paid', session_id = ?, paid_at = COALESCE(paid_at, ?) WHERE id = ? AND payment_status != 'paid'")
-    .bind(session.id, new Date().toISOString(), row.id).run();
+  const paidAt = new Date().toISOString();
+  const intentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+  const payload = orderEmailRoutingConfigured(env) ? JSON.stringify(createOrderEmail(JSON.parse(row.order_json), env,
+    { paidAt, sessionId: session.id, paymentIntentId: intentId, amountPaid: row.amount_due / 100, test: !session.livemode })) : null;
+  // D1 commits the verified payment and its outbox entry together. Duplicate events
+  // preserve the original paid_at and cannot enqueue an already-paid legacy order.
+  await env.DB.batch([
+    env.DB.prepare("UPDATE stripe_orders SET payment_status = 'paid', session_id = ?, paid_at = COALESCE(paid_at, ?) WHERE id = ? AND payment_status != 'paid'")
+      .bind(session.id, paidAt, row.id),
+    env.DB.prepare("INSERT OR IGNORE INTO order_email_notifications(order_id,order_snapshot_json,is_test,payment_intent_id,payload_json,created_at) SELECT id,order_json,?,?,?,paid_at FROM stripe_orders WHERE id=? AND payment_status='paid' AND paid_at=?")
+      .bind(session.livemode ? 0 : 1, intentId || null, payload, row.id, paidAt),
+  ]);
+  const delivery = sendPendingOrderEmail(env, row.id).catch(() => { console.error('Order notification retry required'); });
+  if (context) context.waitUntil(delivery);
+  else await delivery;
 }
 
-export async function handleStripe(request: Request, env: Env): Promise<Response | null> {
+export async function handleStripe(request: Request, env: Env, context?: WorkerContext): Promise<Response | null> {
   const url = new URL(request.url);
   if (!url.pathname.startsWith('/api/stripe/') && !url.pathname.startsWith('/api/admin/stripe-orders')) return null;
   if (!env.STRIPE_SECRET_KEY || !env.STRIPE_WEBHOOK_SECRET || !env.DB || !env.SITE_URL) return json({ success: false, error: 'Los pagos todavía no están configurados. Contacta al asesor.' }, 503);
@@ -132,7 +145,7 @@ export async function handleStripe(request: Request, env: Env): Promise<Response
         event = await client(env).webhooks.constructEventAsync(rawBody, request.headers.get('Stripe-Signature') || '', env.STRIPE_WEBHOOK_SECRET!, undefined, Stripe.createSubtleCryptoProvider());
       } catch { return json({ error: 'Firma inválida.' }, 400); }
       if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
-        await confirmPayment(event.data.object as Stripe.Checkout.Session, env);
+        await confirmPayment(event.data.object as Stripe.Checkout.Session, env, context);
       }
       if (event.type === 'checkout.session.expired' || event.type === 'checkout.session.async_payment_failed') {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -152,7 +165,7 @@ export async function handleStripe(request: Request, env: Env): Promise<Response
       if (Date.parse(row.created_at) + 7 * 86400000 < Date.now()) return json({ error: 'El enlace expiró. Contacta al asesor con tu folio.' }, 410);
       if (row.payment_status !== 'paid') {
         // A customer returning before the webhook can still be verified directly with Stripe.
-        await confirmPayment(await client(env).checkout.sessions.retrieve(sessionId), env);
+        await confirmPayment(await client(env).checkout.sessions.retrieve(sessionId), env, context);
       }
       const updated = await env.DB.prepare('SELECT * FROM stripe_orders WHERE id = ?').bind(row.id).first();
       return json({ status: updated.payment_status, folio: row.id, currency: row.currency, paymentType: row.payment_type, amountPaid: updated.payment_status === 'paid' ? row.amount_due / 100 : 0, balanceDue: (row.total_amount - (updated.payment_status === 'paid' ? row.amount_due : 0)) / 100 });

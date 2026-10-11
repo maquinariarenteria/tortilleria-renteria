@@ -2,6 +2,9 @@ import { handleStripe } from './stripe';
 import { ADMIN_COOKIE, adminToken, createAdminToken, verifyAdminToken } from './adminAuth';
 import { digest, HttpError, json, rateLimit, readJson, readBytes, withSecurity } from './security';
 import { auditLog, handleRecords } from './records';
+import { handleOrderEmail, orderEmailHealth, processPendingOrderEmails } from './orderEmail';
+
+export interface WorkerContext { waitUntil(work: Promise<unknown>): void }
 
 export interface Env {
   ADMIN_PASSWORD?: string;
@@ -9,13 +12,15 @@ export interface Env {
   STRIPE_SECRET_KEY?: string;
   STRIPE_PUBLISHABLE_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
+  ORDER_NOTIFICATION_ENABLED?: string;
+  ORDER_NOTIFICATION_TO?: string;
   SITE_URL?: string;
   DB?: any;
   MEDIA_BUCKET?: any;
   ASSETS: { fetch: (request: Request) => Promise<Response> };
 }
 
-async function dispatch(request: Request, env: Env): Promise<Response> {
+async function dispatch(request: Request, env: Env, context?: WorkerContext): Promise<Response> {
   const { pathname } = new URL(request.url);
   if (!pathname.startsWith('/api/') && !pathname.startsWith('/media/')) return env.ASSETS.fetch(request);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 });
@@ -49,7 +54,7 @@ async function dispatch(request: Request, env: Env): Promise<Response> {
     }
     if (pathname === '/api/admin/health' && request.method === 'GET') {
       const start = Date.now(); await env.DB.prepare('SELECT 1 AS ok').first();
-      return json({ database: true, databaseLatencyMs: Date.now() - start, checkedAt: new Date().toISOString(), stripeMode: /^(sk|rk)_live_/.test(env.STRIPE_SECRET_KEY || '') ? 'live' : 'test', r2Configured: !!env.MEDIA_BUCKET, stripeConfigured: !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET) });
+      return json({ database: true, databaseLatencyMs: Date.now() - start, checkedAt: new Date().toISOString(), stripeMode: /^(sk|rk)_live_/.test(env.STRIPE_SECRET_KEY || '') ? 'live' : 'test', r2Configured: !!env.MEDIA_BUCKET, stripeConfigured: !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET), orderEmail: await orderEmailHealth(env) });
     }
     if (pathname === '/api/admin/audit-log' && request.method === 'GET') {
       const { results } = await env.DB.prepare('SELECT id, action, details, timestamp FROM audit_logs ORDER BY id DESC LIMIT 100').all();
@@ -63,10 +68,12 @@ async function dispatch(request: Request, env: Env): Promise<Response> {
     }
   }
   if (pathname === '/api/stripe/create-checkout-session') await rateLimit(request, env, 'checkout', 10, 600);
+  const orderEmail = await handleOrderEmail(request, env);
+  if (orderEmail) return orderEmail;
   if (pathname.startsWith('/api/notify/')) await rateLimit(request, env, 'contact', 10, 600);
   const records = await handleRecords(request, env);
   if (records) return records;
-  const stripe = await handleStripe(request, env);
+  const stripe = await handleStripe(request, env, context);
   if (stripe) return stripe;
 
   if (pathname === '/api/admin/upload' && request.method === 'POST') {
@@ -105,9 +112,9 @@ async function dispatch(request: Request, env: Env): Promise<Response> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, context?: WorkerContext): Promise<Response> {
     try {
-      const response = await dispatch(request, env);
+      const response = await dispatch(request, env, context);
       const pathname = new URL(request.url).pathname;
       return pathname.startsWith('/api/') ? withSecurity(response) : response;
     } catch (error) {
@@ -115,5 +122,8 @@ export default {
       console.error('Worker request failed:', error instanceof HttpError ? `HTTP ${status}` : 'ServiceError');
       return withSecurity(json({ success: false, error: error instanceof HttpError ? error.message : 'Servicio temporalmente no disponible. Intenta nuevamente.' }, status));
     }
+  },
+  async scheduled(_event: unknown, env: Env, context: WorkerContext) {
+    context.waitUntil(processPendingOrderEmails(env));
   },
 };

@@ -44,7 +44,7 @@ export function AjustesTab() {
     </section>
     <section className="bg-white border rounded-xl p-5 space-y-3">
       <h2 className="text-lg font-bold">Servicios pendientes de configurar</h2>
-      <p>Las solicitudes se registran en el administrador. El envío automático de correos y reportes todavía no está configurado. La carga de nuevas imágenes requiere conectar un bucket R2.</p>
+      <p>Las solicitudes se registran en el administrador. Los avisos de compras pagadas se comprueban en Salud de la web. Los correos de cotizaciones, citas y reportes aún requieren configuración. La carga de nuevas imágenes requiere conectar un bucket R2.</p>
       <p>Las claves de Stripe y la contraseña del administrador se gestionan como secretos del Worker en Cloudflare.</p>
     </section>
   </div>;

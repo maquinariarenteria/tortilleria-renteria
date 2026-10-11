@@ -16,11 +16,13 @@ for (const [name, entry] of Object.entries({worker:'src/worker/index.ts',auth:'s
 const {default:worker}=await import(new URL('worker.mjs',cache));
 const {createAdminToken}=await import(new URL('auth.mjs',cache));
 const {MACHINES_DATA}=await import(new URL('catalog.mjs',cache));
-const schema=(await readFile('migrations/0001_initial_schema.sql','utf8'))+(await readFile('migrations/0002_stripe_orders.sql','utf8'))+(await readFile('migrations/0003_security.sql','utf8'));
+const schema=(await readFile('migrations/0001_initial_schema.sql','utf8'))+(await readFile('migrations/0002_stripe_orders.sql','utf8'))+(await readFile('migrations/0003_security.sql','utf8'))+(await readFile('migrations/0004_order_email_notifications.sql','utf8'));
 class DB {
   sqlite=new DatabaseSync(':memory:');
   fail=false;
+  batchTail=Promise.resolve();
   constructor(){this.sqlite.exec(schema)}
+  batch(statements){const work=async()=>{this.sqlite.exec('BEGIN');try{const results=[];for(const statement of statements)results.push(await statement.run());this.sqlite.exec('COMMIT');return results}catch(error){this.sqlite.exec('ROLLBACK');throw error}};const result=this.batchTail.then(work);this.batchTail=result.catch(()=>{});return result}
   prepare(sql){const db=this;let args=[];return {
     bind(...values){args=values;return this},
     async first(){if(db.fail)throw Error('fixture DB failure');return db.sqlite.prepare(sql).get(...args)||null},
@@ -143,7 +145,7 @@ for(const m of MACHINES_DATA)for(const v of [undefined,...(m.variants||[])])for(
   const token=await login(env);const admin=await worker.fetch(req('/api/admin/stripe-orders',{headers:{Origin:'https://audit.example',Authorization:'Bearer '+token}}),env);const adminData=await admin.json();record('ADMIN-PRIVATE-FIELDS',8,'Lista administrativa no devuelve tokens de cliente',!JSON.stringify(adminData).includes(row.access_token),{orders:adminData.orders.length});
   record('STRIPE-CACHE',16,'Datos privados Stripe con no-store',admin.headers.get('Cache-Control')==='no-store',{header:admin.headers.get('Cache-Control')});
   const invalid=await worker.fetch(req('/api/admin/stripe-orders/'+row.id,{body:{status:'fake',paid:true,total:1},headers:{Origin:'https://audit.example',Authorization:'Bearer '+token}}),env);record('ORDER-STATUS-ALLOWLIST',11,'Rechazo de estado de fabricación arbitrario',invalid.status===400,{status:invalid.status});
-  const names=env.DB.sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(x=>x.name);record('MIGRATIONS',11,'Migraciones actuales recrean once tablas',names.filter(x=>x!=='sqlite_sequence').length===11,{tables:names});
+  const names=env.DB.sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(x=>x.name);const requiredTables=['quotes','sales','appointments','machines','site_config','visits','audit_logs','stripe_orders','admin_sessions','request_limits','app_records','order_email_notifications'];record('MIGRATIONS',11,'Migraciones recrean las tablas de datos, seguridad y avisos',requiredTables.every(name=>names.includes(name)),{tables:names});
   env.DB.sqlite.exec('CREATE TABLE fixture_unique(id INTEGER PRIMARY KEY);INSERT INTO fixture_unique VALUES(1)');let duplicateRejected=false;try{env.DB.sqlite.exec('INSERT INTO fixture_unique VALUES(1)')}catch{duplicateRejected=true}record('DB-UNIQUE',11,'SQLite conserva claves únicas',duplicateRejected,{duplicateRejected});
 }
 

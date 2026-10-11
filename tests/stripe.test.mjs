@@ -7,6 +7,8 @@ const dir = new URL('../node_modules/.cache/renteria-tests/', import.meta.url);
 await mkdir(dir, { recursive: true });
 await build({ entryPoints: ['src/worker/index.ts'], outfile: new URL('worker.mjs', dir).pathname, bundle: true, platform: 'node', format: 'esm', packages: 'external' });
 const { default: worker } = await import(new URL('worker.mjs', dir));
+await build({ entryPoints: ['src/worker/orderEmail.ts'], outfile: new URL('order-email.mjs', dir).pathname, bundle: true, platform: 'node', format: 'esm', packages: 'external' });
+const { sendPendingOrderEmail, processPendingOrderEmails, createOrderEmail } = await import(new URL('order-email.mjs', dir));
 after(() => rm(dir, { recursive: true, force: true }));
 
 import { Database } from './database.mjs';
@@ -26,7 +28,13 @@ async function withStripe(callback) {
   const original = globalThis.fetch;
   const sessions = new Map();
   const calls = [];
+  const emailCalls = [];
+  let emailResponse = async () => Response.json({ success: 'true' });
   globalThis.fetch = async (url, init) => {
+    if (String(url).startsWith('https://formsubmit.co/ajax/')) {
+      const email = { url: String(url), body: JSON.parse(init.body) };
+      emailCalls.push(email); return emailResponse(email);
+    }
     assert.ok(String(url).startsWith('https://api.stripe.com/'));
     if (init?.method === 'POST') {
       const params = new URLSearchParams(init.body);
@@ -38,7 +46,7 @@ async function withStripe(callback) {
     }
     return new Response(JSON.stringify(sessions.get(String(url).split('/').pop())), { headers: { 'Content-Type': 'application/json' } });
   };
-  try { await callback({ calls, sessions }); } finally { globalThis.fetch = original; }
+  try { await callback({ calls, sessions, emailCalls, setEmailResponse: response => { emailResponse = response; } }); } finally { globalThis.fetch = original; }
 }
 async function eventRequest(type, session, secret = 'test_signing_fixture_only') {
   const payload = JSON.stringify({ id: 'evt_test', object: 'event', type, data: { object: session } });
@@ -161,3 +169,108 @@ test('The same configured password works in separate browsers without device reg
     assert.equal((await worker.fetch(request('/api/admin/login', { password }, browserB), env)).status, 401);
   }
 });
+
+function emailSetup() { const { env, DB } = setup(); env.ORDER_NOTIFICATION_ENABLED = 'true'; env.ORDER_NOTIFICATION_TO = 'owner@example.com'; return { env, DB }; }
+async function checkout(env, sessions, change = {}) {
+  const response = await worker.fetch(request('/api/stripe/create-checkout-session', payload(change)), env);
+  assert.equal(response.status, 200); const data = await response.json(); return sessions.get(data.id);
+}
+const notice = DB => DB.sqlite.prepare('SELECT * FROM order_email_notifications').get();
+
+test('Only a verified paid order sends complete data; duplicate webhooks send one notice', async () => withStripe(async ({ sessions, emailCalls }) => {
+  const { env, DB } = emailSetup();
+  const total = product.priceMXN * 100 + Math.round(product.priceMXN * .16) * 100;
+  const session = await checkout(env, sessions, { requiresInvoice: true, expectedTotal: total, customer: { ...customer, name: '<img src=x onerror=alert(1)>', zip: '33000', rfc: 'XAXX010101000', businessName: 'Empresa ficticia' } });
+  assert.equal((await worker.fetch(await eventRequest('checkout.session.completed', session), env)).status, 200);
+  assert.equal(emailCalls.length, 0); assert.equal(notice(DB), undefined);
+  session.payment_status = 'paid'; session.payment_intent = 'pi_test_fixture';
+  assert.equal((await worker.fetch(await eventRequest('checkout.session.completed', session, 'wrong'), env)).status, 400);
+  assert.equal(emailCalls.length, 0);
+  assert.equal((await worker.fetch(await eventRequest('checkout.session.completed', { ...session, amount_total: 1 }), env)).status, 502);
+  assert.equal(emailCalls.length, 0);
+  assert.equal((await worker.fetch(await eventRequest('checkout.session.completed', session), env)).status, 200);
+  assert.equal((await worker.fetch(await eventRequest('checkout.session.async_payment_succeeded', session), env)).status, 200);
+  assert.equal(emailCalls.length, 1); assert.equal(notice(DB).status, 'sent'); assert.equal(DB.paidTransitions, 1);
+  const email = emailCalls[0]; assert.equal(email.url, 'https://formsubmit.co/ajax/owner%40example.com');
+  for (const value of [customer.email, customer.phone, customer.address, customer.city, '33000', 'XAXX010101000', 'Empresa ficticia', product.name, product.sku, session.id, session.payment_intent, 'Flete aparte', 'NO ES UN COBRO REAL']) assert.ok(email.body.message.includes(value), value);
+  assert.ok(email.body._subject.startsWith('[PRUEBA]'));
+  assert.equal(email.body.email, customer.email);
+  assert.equal(email.body.Pagado, email.body.Total);
+  const frozen = JSON.parse(notice(DB).payload_json); assert.ok(frozen.html.includes('&lt;img')); assert.ok(!frozen.html.includes('<img src=x'));
+  assert.ok(!email.body.message.includes([...DB.rows.values()][0].access_token));
+}));
+
+test('A provider outage preserves the paid sale and flags uncertain delivery without duplicating it', async () => withStripe(async ({ sessions, emailCalls, setEmailResponse }) => {
+  const { env, DB } = emailSetup(); const session = await checkout(env, sessions); session.payment_status = 'paid';
+  setEmailResponse(async () => { throw Error('Fixture network timeout'); });
+  assert.equal((await worker.fetch(await eventRequest('checkout.session.completed', session), env)).status, 200);
+  assert.equal([...DB.rows.values()][0].payment_status, 'paid'); assert.equal(notice(DB).status, 'blocked');
+  assert.equal(notice(DB).last_error, 'email_delivery_uncertain');
+  await processPendingOrderEmails(env); await worker.fetch(await eventRequest('checkout.session.completed', session), env);
+  assert.equal(emailCalls.length, 1);
+  const login = await (await worker.fetch(request('/api/admin/login', { password: env.ADMIN_PASSWORD }), env)).json();
+  const orders = await (await worker.fetch(request('/api/admin/stripe-orders', undefined, { Authorization: 'Bearer ' + login.token }), env)).json();
+  assert.equal(orders.orders.length, 1); assert.equal(orders.orders[0].amountPaid, product.priceMXN);
+}));
+
+test('Explicit provider rate rejection is retried with the original notice; success:false cannot look sent', async () => withStripe(async ({ sessions, emailCalls, setEmailResponse }) => {
+  const { env, DB } = emailSetup(); const session = await checkout(env, sessions); session.payment_status = 'paid';
+  setEmailResponse(async () => Response.json({ success: false }, { status: 429 }));
+  await worker.fetch(await eventRequest('checkout.session.completed', session), env);
+  assert.equal(notice(DB).status, 'pending'); await processPendingOrderEmails(env); assert.equal(emailCalls.length, 1);
+  DB.sqlite.prepare('UPDATE order_email_notifications SET next_attempt_at=0').run();
+  setEmailResponse(async () => Response.json({ success: 'true' })); await processPendingOrderEmails(env);
+  assert.equal(emailCalls.length, 2); assert.deepEqual(emailCalls[0].body, emailCalls[1].body); assert.equal(notice(DB).status, 'sent');
+  const other = await checkout(env, sessions); other.payment_status = 'paid';
+  setEmailResponse(async () => Response.json({ success: false })); await worker.fetch(await eventRequest('checkout.session.completed', other), env);
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) AS n FROM order_email_notifications WHERE status='blocked'").get().n, 1);
+}));
+
+test('Concurrent payment confirmations and retries cannot send two notifications', async () => withStripe(async ({ sessions, emailCalls, setEmailResponse }) => {
+  const { env, DB } = emailSetup(); const session = await checkout(env, sessions); session.payment_status = 'paid';
+  let release; let reached; const reachedProvider = new Promise(r => { reached = r; });
+  setEmailResponse(() => { reached(); return new Promise(r => { release = () => r(Response.json({ success: true })); }); });
+  const first = worker.fetch(await eventRequest('checkout.session.completed', session), env);
+  await reachedProvider;
+  const second = await worker.fetch(await eventRequest('checkout.session.async_payment_succeeded', session), env);
+  await sendPendingOrderEmail(env, session.client_reference_id); assert.equal(second.status, 200); assert.equal(emailCalls.length, 1);
+  release(); assert.equal((await first).status, 200); assert.equal(notice(DB).status, 'sent'); assert.equal(DB.paidTransitions, 1);
+}));
+
+test('Durable queue retains original test mode and never backfills already-paid legacy orders', async () => withStripe(async ({ sessions, emailCalls }) => {
+  const { env, DB } = setup(); const session = await checkout(env, sessions); session.payment_status = 'paid';
+  await worker.fetch(await eventRequest('checkout.session.completed', session), env);
+  assert.equal(notice(DB).status, 'pending'); assert.equal(notice(DB).is_test, 1); assert.equal(emailCalls.length, 0);
+  env.ORDER_NOTIFICATION_ENABLED = 'true'; env.ORDER_NOTIFICATION_TO = 'owner@example.com'; env.STRIPE_SECRET_KEY = 'sk_live_fixture_only';
+  await processPendingOrderEmails(env); assert.ok(emailCalls[0].body._subject.startsWith('[PRUEBA]'));
+  const legacy = await checkout({ ...env, STRIPE_SECRET_KEY: 'test_fixture_only' }, sessions); legacy.payment_status = 'paid';
+  DB.sqlite.prepare("UPDATE stripe_orders SET payment_status='paid',paid_at='2026-01-01T00:00:00Z' WHERE id=?").run(legacy.client_reference_id);
+  await worker.fetch(await eventRequest('checkout.session.completed', legacy), { ...env, STRIPE_SECRET_KEY: 'test_fixture_only' });
+  assert.equal(DB.sqlite.prepare('SELECT COUNT(*) AS n FROM order_email_notifications').get().n, 1);
+}));
+
+test('Payment and notification commit together; database failure is safely retried by Stripe', async () => withStripe(async ({ sessions, emailCalls }) => {
+  const { env, DB } = emailSetup(); const session = await checkout(env, sessions); session.payment_status = 'paid';
+  DB.sqlite.exec("CREATE TRIGGER fail_notice BEFORE INSERT ON order_email_notifications BEGIN SELECT RAISE(ABORT,'fixture failure'); END;");
+  assert.equal((await worker.fetch(await eventRequest('checkout.session.completed', session), env)).status, 502);
+  assert.equal([...DB.rows.values()][0].payment_status, 'pending'); assert.equal(notice(DB), undefined); assert.equal(emailCalls.length, 0);
+  DB.sqlite.exec('DROP TRIGGER fail_notice');
+  assert.equal((await worker.fetch(await eventRequest('checkout.session.completed', session), env)).status, 200);
+  assert.equal(notice(DB).status, 'sent'); assert.equal(emailCalls.length, 1);
+}));
+
+test('Email diagnostics require admin authentication and have a sending limit; abandoned delivery is reviewed', async () => withStripe(async ({ sessions, emailCalls }) => {
+  const { env, DB } = emailSetup();
+  assert.equal((await worker.fetch(request('/api/admin/order-notifications/test', {}), env)).status, 401); assert.equal(emailCalls.length, 0);
+  const login = await (await worker.fetch(request('/api/admin/login', { password: env.ADMIN_PASSWORD }), env)).json();
+  const headers = { Authorization: 'Bearer ' + login.token };
+  for (let i = 0; i < 3; i++) assert.equal((await worker.fetch(request('/api/admin/order-notifications/test', {}, headers), env)).status, 200);
+  assert.equal((await worker.fetch(request('/api/admin/order-notifications/test', {}, headers), env)).status, 429);
+  assert.equal(emailCalls.length, 3); assert.equal(DB.rows.size, 0);
+  const session = await checkout(env, sessions); session.payment_status = 'paid'; env.ORDER_NOTIFICATION_ENABLED = 'false';
+  await worker.fetch(await eventRequest('checkout.session.completed', session), env);
+  DB.sqlite.prepare("UPDATE order_email_notifications SET status='sending',locked_until=0").run();
+  env.ORDER_NOTIFICATION_ENABLED = 'true'; await processPendingOrderEmails(env);
+  assert.equal(notice(DB).status, 'blocked'); assert.equal(emailCalls.length, 3);
+  const health = await (await worker.fetch(request('/api/admin/health', undefined, headers), env)).json(); assert.equal(health.orderEmail.blocked, 1);
+}));

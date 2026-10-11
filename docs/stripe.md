@@ -52,7 +52,7 @@ Antes de activar producción probar: compra completa al 100%, rechazo de anticip
 - No se admiten anticipos, cuotas ni pagos parciales; no se guarda tarjeta.
 - El cálculo existente de IVA al solicitar factura se conserva. Este cambio no implementa CFDI ni revisa obligaciones fiscales.
 - El catálogo base/variantes proviene del código. Los precios base sincronizados en D1 prevalecen. Un producto nuevo creado solo en localStorage no se habilita para cobro automáticamente; un precio discrepante se rechaza. Antes de publicar precios nuevos actualiza/sincroniza el catálogo del servidor.
-- Se guardan pagos y estados en D1; el correo antiguo del navegador no se usa como prueba de pago ni se envía automáticamente para estas órdenes.
+- Se guardan pagos y estados en D1; el correo antiguo del navegador no se usa como prueba de pago. Los avisos al vendedor se generan en el servidor al verificar el pago.
 - Reembolsos, disputas y sincronización de métricas/CRM locales quedan fuera de esta integración inicial.
 - La clave y el webhook de producción serán distintos; no cambiar a producción hasta completar las pruebas.
 
@@ -60,10 +60,23 @@ Antes de activar producción probar: compra completa al 100%, rechazo de anticip
 
 - El carrito exige un correo válido para pagar con tarjeta; el servidor lo vuelve a validar antes de crear Checkout.
 - El Worker pasa ese correo como `customer_email` y `payment_intent_data.receipt_email`. En compras reales, Stripe envía el recibo al confirmarse el pago, incluso si la opción general de recibos no está activada. La descripción y metadata del pago incluyen el folio del pedido.
-- El aviso al vendedor depende de Stripe: Configuración → Preferencias de comunicación → Transacciones y saldos → «Recibo de pago exitoso - Email». Se envía al correo del usuario de Stripe, no necesariamente al correo de contacto publicado en la tienda. Las preferencias corresponden a cada cuenta y entorno.
+- Stripe puede enviar un aviso adicional al usuario de su cuenta: Configuración → Preferencias de comunicación → Transacciones y saldos → «Recibo de pago exitoso - Email». El aviso completo de esta tienda se envía por FormSubmit al correo configurado en `ORDER_NOTIFICATION_TO`.
 - Para activar también los recibos generales: Configuración → Empresa → Correos electrónicos de clientes → Pagos efectuados correctamente. Revisar esta opción y el aviso al vendedor en la cuenta real antes del lanzamiento.
 - Stripe no envía automáticamente los recibos de compras de prueba por defecto; una compra simulada no demuestra entrega al correo. Probar el recibo con envío manual desde Stripe a un destinatario autorizado y revisar el historial de recibos. El sandbox puede restringir destinatarios a miembros del equipo o dominios verificados.
-- El recibo de Stripe es un comprobante de pago; no sustituye un CFDI ni activa correos de cotizaciones, citas o reportes. No se habilita `invoice_creation` ni un proveedor de correo adicional para este flujo.
+- El recibo de Stripe es un comprobante de pago; no sustituye un CFDI ni activa correos de cotizaciones, citas o reportes. No se habilita `invoice_creation`.
+
+### Aviso completo al vendedor por FormSubmit
+
+- Destinatario autorizado: `maquinariarenteria17@gmail.com`. Servicio gratuito que no requiere crear una cuenta; la primera vez puede requerir activar el formulario desde el mensaje que llega a esa dirección.
+- Aplicar `migrations/0004_order_email_notifications.sql` antes del despliegue. El pago confirmado y su aviso pendiente se escriben juntos mediante una transacción D1. El pedido sigue apareciendo en Ventas aunque el proveedor falle.
+- `ORDER_NOTIFICATION_ENABLED=true` y `ORDER_NOTIFICATION_TO` se configuran en el Worker. No se usa una clave API ni se expone un endpoint público para enviar correos arbitrarios.
+- El webhook firmado y la consulta verificada de Stripe comparten la confirmación de pago. No se envían avisos de pagos pendientes, fallidos, manipulados o cancelados. Eventos repetidos y concurrentes no duplican el aviso. No se envían automáticamente las compras antiguas que ya estaban pagadas antes de esta migración.
+- Se incluye folio, fecha, nombre, teléfono, correo, dirección, ciudad, estado, código postal, equipos y variantes, SKU, cantidades, precios, subtotal, IVA, total, importe pagado, saldo, flete por coordinar, factura solicitada, RFC, razón social y referencias Stripe. Las simulaciones se identifican con `[PRUEBA]`. No se incluyen claves, tokens de acceso ni datos de tarjeta.
+- Se intenta enviar en segundo plano con `waitUntil`. Los rechazos explícitos por límite de peticiones se reintentan cada 15 minutos con espera creciente. FormSubmit no documenta deduplicación por clave: si la entrega queda incierta por un timeout o una interrupción, el aviso queda para revisión y no se reenvía automáticamente, para evitar duplicados.
+- En Salud de la web se muestra conexión, avisos aceptados, pendientes y avisos que requieren revisión. El botón de prueba requiere sesión de administrador y permite tres envíos por hora. No crea ventas ni cobra.
+- `sent` significa que el proveedor aceptó la solicitud, no que se verificó la llegada a la bandeja de entrada. FormSubmit conserva las solicitudes pendientes de activación y las envía al confirmar el formulario. Comprobar el correo de prueba y el de una compra simulada en la bandeja de entrada o spam antes de dar por terminada la activación.
+
+Fuentes del proveedor: https://formsubmit.co/ ; https://formsubmit.co/documentation ; https://formsubmit.co/ajax-documentation ; https://formsubmit.co/help
 
 Fuentes: https://docs.stripe.com/receipts ; https://docs.stripe.com/api/checkout/sessions/create ; https://support.stripe.com/questions/set-up-account-email-notifications
 
