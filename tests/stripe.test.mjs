@@ -144,6 +144,24 @@ test('Admin orders require a signed session; fake prefixes and wrong passwords f
   const response = await worker.fetch(request('/api/admin/stripe-orders', undefined, { Authorization: 'Bearer ' + login.token }), env);
   assert.equal(response.status, 200); assert.deepEqual((await response.json()).orders, []);
 });
+test('Switching payment environments never counts sandbox orders as live sales', async () => {
+  const { env, DB } = setup();
+  const insert = DB.sqlite.prepare('INSERT INTO stripe_orders(id,access_token,order_json,currency,payment_type,amount_due,total_amount,session_id,payment_status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)');
+  for (const [id, session, status] of [['sandbox-order', 'cs_test_paid', 'paid'], ['live-order', 'cs_live_paid', 'paid'], ['pending-order', 'cs_live_pending', 'pending']]) {
+    insert.run(id, 'fixture', JSON.stringify({ folio: id, total: 16000 }), 'MXN', 'full', 1600000, 1600000, session, status, '2026-10-15T00:00:00Z');
+  }
+  const login = await (await worker.fetch(request('/api/admin/login', { password: env.ADMIN_PASSWORD }), env)).json();
+  const headers = { Authorization: 'Bearer ' + login.token };
+  const list = async () => (await (await worker.fetch(request('/api/admin/stripe-orders', undefined, headers), env)).json()).orders.map(order => order.folio);
+  assert.deepEqual(await list(), ['sandbox-order']);
+  env.STRIPE_SECRET_KEY = 'rk_live_fixture';
+  assert.deepEqual(await list(), ['live-order']);
+  env.STRIPE_SECRET_KEY = 'sk_live_fixture';
+  assert.deepEqual(await list(), ['live-order']);
+  env.STRIPE_SECRET_KEY = 'test_fixture_only';
+  assert.deepEqual(await list(), ['sandbox-order']);
+  assert.equal(DB.sqlite.prepare('SELECT COUNT(*) AS n FROM stripe_orders').get().n, 3);
+});
 test('The same configured password works in separate browsers without device registration', async () => {
   const { env, DB } = setup();
   env.ADMIN_PASSWORD = 'fixture-A>\"/symbols-123';
