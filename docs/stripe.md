@@ -55,6 +55,7 @@ Antes de activar producción probar: compra completa al 100%, rechazo de anticip
 - Se guardan pagos y estados en D1; el correo antiguo del navegador no se usa como prueba de pago. Los avisos al vendedor se generan en el servidor al verificar el pago.
 - Reembolsos, disputas y sincronización de métricas/CRM locales quedan fuera de esta integración inicial.
 - La clave y el webhook de producción serán distintos; no cambiar a producción hasta completar las pruebas.
+- El administrador lista únicamente los pedidos del entorno de la clave activa: `cs_test_*` en pruebas y `cs_live_*` en producción. El historial del otro entorno se conserva en D1, pero no se suma a las ventas ni aparece en el listado del entorno activo.
 
 ## Correos de compra
 
