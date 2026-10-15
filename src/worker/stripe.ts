@@ -185,7 +185,9 @@ export async function handleStripe(request: Request, env: Env, context?: WorkerC
     }
     // Authentication is checked by the Worker's admin middleware before reaching this route.
     if (url.pathname === '/api/admin/stripe-orders' && request.method === 'GET') {
-      const { results } = await env.DB.prepare("SELECT * FROM stripe_orders WHERE payment_status = 'paid' ORDER BY created_at DESC LIMIT 200").all();
+      // Retain sandbox history without counting simulated purchases as live revenue.
+      const sessionPattern = /^(sk|rk)_live_/.test(env.STRIPE_SECRET_KEY!) ? 'cs_live_*' : 'cs_test_*';
+      const { results } = await env.DB.prepare("SELECT * FROM stripe_orders WHERE payment_status = 'paid' AND session_id GLOB ? ORDER BY created_at DESC LIMIT 200").bind(sessionPattern).all();
       return json({ orders: results.map((r: any) => ({ ...JSON.parse(r.order_json), amountPaid: r.amount_due / 100, balanceDue: (r.total_amount - r.amount_due) / 100, stripeSessionId: r.session_id })) });
     }
     return json({ error: 'Ruta no disponible.' }, 405);
