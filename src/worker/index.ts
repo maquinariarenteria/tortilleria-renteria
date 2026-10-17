@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, adminToken, createAdminToken, verifyAdminToken } from './
 import { digest, HttpError, json, rateLimit, readJson, readBytes, withSecurity } from './security';
 import { auditLog, handleRecords } from './records';
 import { handleOrderEmail, orderEmailHealth, processPendingOrderEmails } from './orderEmail';
+import { handleMedia, supabaseConfigured } from './media';
 
 export interface WorkerContext { waitUntil(work: Promise<unknown>): void }
 
@@ -19,6 +20,9 @@ export interface Env {
   SITE_URL?: string;
   DB?: any;
   MEDIA_BUCKET?: any;
+  SUPABASE_URL?: string;
+  SUPABASE_SECRET_KEY?: string;
+  SUPABASE_MEDIA_BUCKET?: string;
   ASSETS: { fetch: (request: Request) => Promise<Response> };
 }
 
@@ -56,7 +60,7 @@ async function dispatch(request: Request, env: Env, context?: WorkerContext): Pr
     }
     if (pathname === '/api/admin/health' && request.method === 'GET') {
       const start = Date.now(); await env.DB.prepare('SELECT 1 AS ok').first();
-      return json({ database: true, databaseLatencyMs: Date.now() - start, checkedAt: new Date().toISOString(), stripeMode: /^(sk|rk)_live_/.test(env.STRIPE_SECRET_KEY || '') ? 'live' : 'test', r2Configured: !!env.MEDIA_BUCKET, stripeConfigured: !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET), orderEmail: await orderEmailHealth(env) });
+      return json({ database: true, databaseLatencyMs: Date.now() - start, checkedAt: new Date().toISOString(), stripeMode: /^(sk|rk)_live_/.test(env.STRIPE_SECRET_KEY || '') ? 'live' : 'test', r2Configured: !!env.MEDIA_BUCKET, mediaProvider: supabaseConfigured(env) ? 'supabase' : env.MEDIA_BUCKET ? 'r2' : 'static', stripeConfigured: !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET), orderEmail: await orderEmailHealth(env) });
     }
     if (pathname === '/api/admin/audit-log' && request.method === 'GET') {
       const { results } = await env.DB.prepare('SELECT id, action, details, timestamp FROM audit_logs ORDER BY id DESC LIMIT 100').all();
@@ -73,6 +77,8 @@ async function dispatch(request: Request, env: Env, context?: WorkerContext): Pr
   const orderEmail = await handleOrderEmail(request, env);
   if (orderEmail) return orderEmail;
   if (pathname.startsWith('/api/notify/')) await rateLimit(request, env, 'contact', 10, 600);
+  const media = await handleMedia(request, env);
+  if (media) return media;
   const records = await handleRecords(request, env);
   if (records) return records;
   const stripe = await handleStripe(request, env, context);
