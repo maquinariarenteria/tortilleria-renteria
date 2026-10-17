@@ -25,6 +25,8 @@
   "vars": {
     "ENVIRONMENT": "production",
     "SITE_URL": "https://maquinaria-renteria.com",
+    "SUPABASE_URL": "https://hktthpvdbyewfgqvuiek.supabase.co",
+    "SUPABASE_MEDIA_BUCKET": "renteria-fotos",
     "ORDER_NOTIFICATION_TO": "maquinariarenteria17@gmail.com",
     "ORDER_NOTIFICATION_FROM": "ventas@maquinaria-renteria.com",
     "ORDER_NOTIFICATION_ENABLED": "true"

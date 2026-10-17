@@ -8,8 +8,9 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test:stripe": "node --test tests/stripe.test.mjs",
+    "test:media": "node --test tests/media.test.mjs",
     "test:security": "node scripts/audit-security.mjs",
-    "check": "npm run test:stripe && npm run test:security && npm run build"
+    "check": "npm run test:stripe && npm run test:media && npm run test:security && npm run build"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
