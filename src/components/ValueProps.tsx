@@ -1,7 +1,9 @@
 import React from 'react';
 import { ScrollReveal } from './ScrollReveal';
+import { useCatalogImages } from '../hooks/useCatalogImages';
 
 export const ValueProps: React.FC = () => {
+  const imageFor = useCatalogImages();
   const pillars = [
     {
       title: 'MÁS DE 15 AÑOS DE EXPERIENCIA',
@@ -35,7 +37,7 @@ export const ValueProps: React.FC = () => {
               <div className="flex flex-col items-center text-center group h-full">
                 <div className="w-full h-40 bg-white rounded-lg border border-slate-700 flex items-center justify-center p-2.5 transition-all duration-300 group-hover:scale-102 overflow-hidden shadow-md">
                   <img
-                    src={item.image}
+                    src={imageFor(item.image)}
                     alt={item.title}
                     className="w-full h-full object-contain object-center"
                   />
