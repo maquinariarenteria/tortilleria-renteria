@@ -1,4 +1,5 @@
 import React from 'react';
+import { useCatalogImages } from '../hooks/useCatalogImages';
 
 interface HeroProps {
   onExploreCatalog: () => void;
@@ -6,6 +7,7 @@ interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ onExploreCatalog, onContact }) => {
+  const imageFor = useCatalogImages();
   return (
     <section className="py-6 sm:py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -61,7 +63,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreCatalog, onContact }) => {
 
           <div className="w-full md:w-80 lg:w-96 shrink-0 flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-200 rounded-xl relative group">
             <img
-              src="/images/01_prensa_comal.jpg"
+              src={imageFor('/images/01_prensa_comal.jpg')}
               alt="Prensa Manual con Comal Maquinaria Renteria"
               className="w-full h-56 sm:h-64 object-contain object-center transition-transform duration-300 group-hover:scale-105"
             />
