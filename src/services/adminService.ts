@@ -2,6 +2,7 @@ import { setAdminAuthenticated } from '../utils/adminStore';
 import { storeRequest } from './storeApi';
 export interface LoginResponse { success: boolean; token?: string; error?: string; source?: 'cloudflare_worker' | 'local_fallback'; secretKeyName?: string }
 export interface UploadResponse { success: boolean; url?: string; key?: string; error?: string }
+export interface MediaStatus { provider: 'supabase' | 'r2' | 'static'; configured: boolean; lastSync: { syncedAt: string; photoCount: number; updatedCount: number } | null }
 export const CLOUDFLARE_CONFIG_INFO = { secretName:'ADMIN_PASSWORD', jwtSecretName:'ADMIN_JWT_SECRET',d1BindingName:'DB',d1DatabaseName:'tortilleria-renteria-db',r2BindingName:'MEDIA_BUCKET',r2BucketName:'tortilleria-renteria-media' };
 export class AdminService {
   static async login(password: string): Promise<LoginResponse> {
@@ -9,7 +10,11 @@ export class AdminService {
       setAdminAuthenticated(true); return { success:true,source:'cloudflare_worker' };
     } catch(error) { return {success:false,error:error instanceof Error?error.message:'No se pudo iniciar sesión.'}; }
   }
-  static async uploadImageToR2(file: File): Promise<UploadResponse> {
+  static async getMediaStatus(): Promise<MediaStatus> { return storeRequest('/api/admin/media/status'); }
+  static async syncPhotos(): Promise<{ success: boolean; syncedAt: string; photoCount: number; updatedCount: number }> {
+    return storeRequest('/api/admin/media/sync', { method: 'POST', body: '{}' });
+  }
+  static async uploadImage(file: File): Promise<UploadResponse> {
     try { const form = new FormData(); form.append('file', file);
       const response = await fetch('/api/admin/upload', {method:'POST',body:form,credentials:'same-origin'});
       const data = await response.json(); if(!response.ok)throw Error(data.error || 'No se pudo subir la imagen.'); return data;
