@@ -3,7 +3,7 @@ const paths = execFileSync('git', ['diff', '--cached', '--name-only', '--diff-fi
 let failed = false;
 for (const path of paths) {
   const content = execFileSync('git', ['show', ':' + path], { encoding: 'utf8', maxBuffer: 20000000 });
-  if (/(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}|whsec_[A-Za-z0-9]{16,}|ghp_[A-Za-z0-9]{20,}/.test(content)) {
+  if (/(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}|whsec_[A-Za-z0-9]{16,}|ghp_[A-Za-z0-9]{20,}|sb_secret_[A-Za-z0-9_-]{20,}/.test(content)) {
     console.error(`Posible credencial en ${path}. Retírala antes de confirmar el commit.`);
     failed = true;
   }
