@@ -26,7 +26,7 @@ async function withSupabase(run) {
   globalThis.fetch=async(url,init={})=>{
     assert.equal(new URL(url).origin,'https://fixture.supabase.co');
     assert.equal(new Headers(init.headers).get('apikey'),'sb_secret_fixture_only');
-    assert.equal(init.redirect,'error');
+    assert.equal(init.redirect,'manual');
     calls.push({url:String(url),...init}); return handler(url,init);
   };
   try {await run({calls,respond:fn=>handler=fn});} finally {globalThis.fetch=previous;}
@@ -51,6 +51,11 @@ test('Sync reads real photo records, preserves prices/specifications and records
 test('Empty metadata does not erase existing photos',async()=>withSupabase(async()=>{
   const {env,token}=await setup();const before=catalog(env);
   assert.equal((await worker.fetch(req('/api/admin/media/sync',{},token),env)).status,200);assert.deepEqual(catalog(env),before);
+}));
+test('Upstream redirects are rejected without forwarding the server key',async()=>withSupabase(async({respond,calls})=>{
+  const {env,token}=await setup();respond(async()=>new Response(null,{status:302,headers:{Location:'https://untrusted.example'}}));
+  const r=await worker.fetch(req('/api/admin/media/sync',{},token),env);
+  assert.equal(r.status,503);assert.equal(calls.length,1);assert.deepEqual(catalog(env),MACHINES_DATA);
 }));
 test('Unavailable or invalid upstream cannot report success or alter catalog',async()=>withSupabase(async({respond})=>{
   for(const payload of [new Response('paused',{status:540}),Response.json([{machine_id:MACHINES_DATA[0].id,object_key:'../private.env'}]),Response.json([{machine_id:MACHINES_DATA[0].id,object_key:'https://evil.example/photo.jpg'}])]) {
