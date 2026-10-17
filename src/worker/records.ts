@@ -1,6 +1,7 @@
 import type { Env } from './index';
 import { MACHINES_DATA } from '../data/machines';
 import { digest, HttpError, json, readJson } from './security';
+import { savePhotoMappings } from './media';
 
 function str(value: unknown, required = false, max = 500) {
   if (value === undefined && !required) return '';
@@ -85,6 +86,7 @@ export async function handleRecords(request: Request, env: Env): Promise<Respons
   }
   if (pathname === '/api/admin/machines' && request.method === 'POST') {
     const body = await readJson(request, 300000); const machines = validateCatalog(body.machines);
+    await savePhotoMappings(env, await readCatalog(env), machines);
     await env.DB.prepare("INSERT INTO app_records(kind, id, data_json, updated_at) VALUES ('catalog', 'main', ?, ?) ON CONFLICT(kind,id) DO UPDATE SET data_json = excluded.data_json, updated_at = excluded.updated_at").bind(JSON.stringify(machines), new Date().toISOString()).run();
     await auditLog(env, 'catalog.update', 'main'); return json({ success: true, count: machines.length });
   }
