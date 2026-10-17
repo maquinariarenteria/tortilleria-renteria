@@ -4,22 +4,39 @@ import {
   getStoredMachines, 
   updateStoredMachine, 
   addStoredMachine, 
-  deleteStoredMachine 
+  deleteStoredMachine,
+  refreshPublicStore
 } from '../../../utils/adminStore';
-import { AdminService } from '../../../services/adminService';
+import { AdminService, MediaStatus } from '../../../services/adminService';
+import { optimizePhoto } from '../../../utils/optimizePhoto';
 import { 
   Plus, Edit3, Trash2, Upload, 
-  Star, Sparkles, X, CheckCircle 
+  Star, Sparkles, X, CheckCircle, RefreshCw
 } from 'lucide-react';
 
 export const CatalogoTab: React.FC = () => {
   const [machines, setMachines] = useState<MachineProduct[]>(getStoredMachines());
   const [editingMachine, setEditingMachine] = useState<MachineProduct | null>(null);
   const [isNew, setIsNew] = useState(false);
-  const [isUploadingR2, setIsUploadingR2] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [media, setMedia] = useState<MediaStatus | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => { const update = () => setMachines(getStoredMachines()); window.addEventListener('mr_machines_updated', update); return () => window.removeEventListener('mr_machines_updated', update); }, []);
+  useEffect(() => { void AdminService.getMediaStatus().then(setMedia).catch(() => setSyncMessage('No se pudo consultar la conexión de fotos. Recarga e inténtalo nuevamente.')); }, []);
+
+  const handleSync = async () => {
+    setIsSyncing(true); setSyncMessage('');
+    try {
+      const result = await AdminService.syncPhotos();
+      await refreshPublicStore();
+      setMedia({ provider: 'supabase', configured: true, lastSync: result });
+      setSyncMessage(`Sincronización completada: ${result.photoCount} fotos registradas y ${result.updatedCount} actualizadas en la web.`);
+    } catch (error) { setSyncMessage(error instanceof Error ? error.message : 'No se pudieron sincronizar las fotos.'); }
+    finally { setIsSyncing(false); }
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -66,18 +83,16 @@ export const CatalogoTab: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !editingMachine) return;
 
-    setIsUploadingR2(true);
-    showToast('Subiendo imagen a Cloudflare R2...');
-
-    const res = await AdminService.uploadImageToR2(file);
-    setIsUploadingR2(false);
-
-    if (res.success && res.url) {
+    setIsUploading(true);
+    showToast('Optimizando foto a WebP...');
+    try {
+      const optimized = await optimizePhoto(file);
+      const res = await AdminService.uploadImage(optimized);
+      if (!res.success || !res.url) throw new Error(res.error || 'Error al subir la imagen.');
       setEditingMachine({ ...editingMachine, imageUrl: res.url });
-      showToast('Imagen vinculada exitosamente con R2.');
-    } else {
-      showToast(res.error || 'Error al subir la imagen.');
-    }
+      showToast(`WebP subida (${Math.ceil(optimized.size / 1024)} KB). Pulsa Guardar en Catálogo para publicarla.`);
+    } catch (error) { showToast(error instanceof Error ? error.message : 'No se pudo optimizar la foto.'); }
+    finally { setIsUploading(false); e.target.value = ''; }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -139,7 +154,7 @@ export const CatalogoTab: React.FC = () => {
             </span>
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Administra precios de venta, fotos alojadas en Cloudflare R2, fichas técnicas y modelos destacados.
+            Administra precios de venta, fotos, fichas técnicas y modelos destacados.
           </p>
         </div>
 
@@ -151,6 +166,21 @@ export const CatalogoTab: React.FC = () => {
           <span>Nueva Máquina</span>
         </button>
       </div>
+
+      <section className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-sm">Fotos del catálogo</h3>
+            <p className="text-xs text-slate-600 mt-1">{media?.provider === 'supabase' ? 'Conectadas con Supabase. Sube una foto al editar una máquina y guarda para publicarla.' : media?.provider === 'r2' ? 'Conectadas con Cloudflare R2.' : 'Las fotos actuales siguen publicadas. La conexión para nuevas subidas está pendiente.'}</p>
+          </div>
+          <button onClick={handleSync} disabled={isSyncing || media?.provider !== 'supabase'} className="flex items-center gap-2 bg-blue-600 text-white text-xs font-semibold rounded-lg px-4 py-2 disabled:opacity-50 cursor-pointer">
+            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Sincronizando…' : 'Sincronizar fotos'}
+          </button>
+        </div>
+        {media?.provider === 'supabase' && <p className="text-xs text-slate-500">Consulta las fotos registradas en Supabase y actualiza su asignación en la web. Última sincronización: {media.lastSync ? new Date(media.lastSync.syncedAt).toLocaleString('es-MX') : 'todavía no realizada'}.</p>}
+        {syncMessage && <p role="status" className="text-sm text-slate-700">{syncMessage}</p>}
+      </section>
 
       {/* Machines Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -252,10 +282,10 @@ export const CatalogoTab: React.FC = () => {
                   {isNew ? 'Nueva Máquina en Catálogo' : `Editar: ${editingMachine.name}`}
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Las imágenes se vinculan con Cloudflare R2 (almacenamiento masivo sin costo de ancho de banda).
+                  Sube la foto y guarda el catálogo para publicarla en tu web.
                 </p>
               </div>
-              <button onClick={() => setEditingMachine(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+              <button disabled={isUploading} onClick={() => setEditingMachine(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer disabled:opacity-50" aria-label="Cerrar edición">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -272,14 +302,15 @@ export const CatalogoTab: React.FC = () => {
                 <div className="flex-1 space-y-2 text-center sm:text-left">
                   <span className="font-semibold text-slate-900 block">Imagen Principal de la Máquina</span>
                   <p className="text-[11px] text-slate-500">
-                    Sube una foto de alta calidad (JPG, PNG, WebP). En Cloudflare se aloja en el bucket <code className="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">MEDIA_BUCKET</code>.
+                    Selecciona una foto JPG, PNG o WebP de hasta 20 MB. Se optimiza a WebP, con un máximo de 1800 píxeles y 5 MB, antes de subirla.
                   </p>
                   <label className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer transition-colors shadow-2xs">
                     <Upload className="w-3.5 h-3.5" />
-                    <span>{isUploadingR2 ? 'Subiendo a R2...' : 'Seleccionar archivo local'}</span>
+                    <span>{isUploading ? 'Subiendo imagen...' : 'Seleccionar archivo local'}</span>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
+                      disabled={isUploading || !media?.configured}
                       onChange={handleImageFileChange}
                       className="hidden"
                     />
@@ -408,6 +439,7 @@ export const CatalogoTab: React.FC = () => {
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
+                  disabled={isUploading}
                   onClick={() => setEditingMachine(null)}
                   className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer font-medium"
                 >
@@ -415,6 +447,7 @@ export const CatalogoTab: React.FC = () => {
                 </button>
                 <button
                   type="submit"
+                  disabled={isUploading}
                   className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs cursor-pointer"
                 >
                   Guardar en Catálogo
