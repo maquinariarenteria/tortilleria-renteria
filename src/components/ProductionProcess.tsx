@@ -1,7 +1,9 @@
 import React from 'react';
 import { ScrollReveal } from './ScrollReveal';
+import { useCatalogImages } from '../hooks/useCatalogImages';
 
 export const ProductionProcess: React.FC = () => {
+  const imageFor = useCatalogImages();
   const steps = [
     {
       num: '01',
@@ -62,7 +64,7 @@ export const ProductionProcess: React.FC = () => {
                 <div>
                   <div className="w-full h-32 bg-white border border-slate-200 rounded-lg flex items-center justify-center p-2 mb-3 overflow-hidden shadow-2xs">
                     <img
-                      src={step.image}
+                      src={imageFor(step.image)}
                       alt={step.title}
                       className="w-full h-full object-contain object-center transition-transform duration-300 group-hover:scale-105"
                     />
