@@ -18,7 +18,9 @@ async function supabase(env: Env, path: string, options: RequestInit = {}) {
   const { origin, key } = config(env);
   let response: Response;
   try {
-    response = await fetch(origin + path, { ...options, redirect: 'error', signal: AbortSignal.timeout(15000), headers: { apikey: key, ...options.headers } });
+    // Workers supports manual/follow, not redirect:error. Treat 3xx as errors below
+    // so the server key is never forwarded to a redirected destination.
+    response = await fetch(origin + path, { ...options, redirect: 'manual', signal: AbortSignal.timeout(15000), headers: { apikey: key, ...options.headers } });
   } catch { throw new HttpError(503, 'No se pudo conectar con Supabase. Las fotos publicadas se conservan.'); }
   if (!response.ok) {
     await response.body?.cancel();
