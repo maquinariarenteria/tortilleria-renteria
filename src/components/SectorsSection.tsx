@@ -1,12 +1,14 @@
 import React from 'react';
 import { ScrollReveal } from './ScrollReveal';
 import { ArrowRight } from 'lucide-react';
+import { useCatalogImages } from '../hooks/useCatalogImages';
 
 interface SectorsSectionProps {
   onSelectSector: () => void;
 }
 
 export const SectorsSection: React.FC<SectorsSectionProps> = ({ onSelectSector }) => {
+  const imageFor = useCatalogImages();
   const sectors = [
     {
       title: 'Taquerías & Restaurantes',
@@ -61,7 +63,7 @@ export const SectorsSection: React.FC<SectorsSectionProps> = ({ onSelectSector }
                 <div>
                   <div className="w-full h-36 bg-white border border-slate-200 rounded-lg flex items-center justify-center p-2 mb-4 group-hover:scale-102 transition-transform overflow-hidden shadow-2xs">
                     <img
-                      src={sec.image}
+                      src={imageFor(sec.image)}
                       alt={sec.title}
                       className="w-full h-full object-contain object-center"
                     />
