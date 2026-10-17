@@ -19,6 +19,10 @@ El bucket es privado: el Worker entrega las fotos de productos en `/media/catalo
 Estas fotos sí son visibles públicamente en la tienda, mediante esa ruta. Las claves
 de Supabase y sus respuestas administrativas nunca se envían al navegador del cliente.
 Las fotos ya publicadas como archivos `/images/…` permanecen disponibles en Cloudflare.
+Las ocho fotos principales se migraron a WebP en Supabase. Inicio, proceso de
+producción, ventajas y sectores reutilizan la foto vigente de cada máquina del
+catálogo. Los originales estáticos se conservan como respaldo y como imagen
+inicial mientras se consulta el catálogo.
 
 ## Uso
 
